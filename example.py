@@ -1,6 +1,6 @@
 from data_loading.datasets import DefaultDataset
 from data_loading.dataloaders import get_data_loaders
-from config import ELL_DATA_DIR
+from settings import ELL_DATA_DIR
 from transformers import AutoTokenizer
 
 
