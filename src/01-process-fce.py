@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import sys
 
+
 def clean_response_text(marked_essay) -> str:
     """
     Take response text and remove error tag and corrections
@@ -21,6 +22,7 @@ def clean_response_text(marked_essay) -> str:
     marked_essay = re.sub("<.*?>", "", marked_essay)
     return re.sub(" +", " ", marked_essay).strip()
 
+
 def extract_essay_data(filepath: str) -> pd.Series:
     """
     Take XML file and return processed data as a row observation
@@ -37,7 +39,7 @@ def extract_essay_data(filepath: str) -> pd.Series:
     with open(filepath, "r") as f:
         xml_data = f.read()
     str_xml = " ".join([line.strip() for line in xml_data.split("\n")])
-    sortkey = re.findall("(?<=<head sortkey=\").*?(?=\">)", str_xml)
+    sortkey = re.findall('(?<=<head sortkey=").*?(?=">)', str_xml)
     language = re.findall("(?<=<language>).*?(?=</language>)", str_xml)
     age_grp = re.findall("(?<=<age>).*?(?=</age>)", str_xml)
     if len(age_grp) == 0:
@@ -86,9 +88,10 @@ def extract_essay_data(filepath: str) -> pd.Series:
         "response_1_essay": response_1[0],
         "response_2_q": q2[0],
         "response_2_score": exam_score2[0],
-        "response_2_essay": response_2[0]
+        "response_2_essay": response_2[0],
     }
     return pd.Series(data_dictionary)
+
 
 def get_all_filepaths(directory: str) -> list:
     """
@@ -110,6 +113,7 @@ def get_all_filepaths(directory: str) -> list:
                 filepaths.append(os.path.join(directory, subdir, file))
     return sorted(filepaths)
 
+
 def write_fce_csv(directory: str, output_filepath: str) -> int:
     """
     Combine the extracted essay data from all XML files into a single CSV file
@@ -130,7 +134,8 @@ def write_fce_csv(directory: str, output_filepath: str) -> int:
     essay_df = pd.DataFrame([extract_essay_data(file) for file in essay_files])
     essay_df.to_csv(output_filepath, index=False)
     return int(essay_df.shape[0])
-    
+
+
 if __name__ == "__main__":
     if (len(sys.argv)) != 3:
         print("Usage:")
