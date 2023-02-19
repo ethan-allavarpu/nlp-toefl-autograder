@@ -82,7 +82,7 @@ def write_ets_csv(
 if __name__ == "__main__":
     if (len(sys.argv)) != 4:
         print("Usage:")
-        print("  $ python3 src/01-process-ets.py", end=" ")
+        print("  $ python3 src/process-ets.py", end=" ")
         print("<ets_dir> <join_tab> <out_path>")
         sys.exit(0)
 

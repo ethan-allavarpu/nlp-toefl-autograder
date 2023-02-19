@@ -139,7 +139,7 @@ def write_fce_csv(directory: str, output_filepath: str) -> int:
 if __name__ == "__main__":
     if (len(sys.argv)) != 3:
         print("Usage:")
-        print("  $ python3 src/01-process-fce.py <fce_dir> <output_filepath>")
+        print("  $ python3 src/process-fce.py <fce_dir> <output_filepath>")
         sys.exit(0)
 
     data_directory = os.path.join(os.getcwd(), sys.argv[1])
