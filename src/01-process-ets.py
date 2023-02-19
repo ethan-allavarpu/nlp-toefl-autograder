@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import sys
 
+
 def join_essay_score(essay_file: str, join_table: pd.DataFrame) -> pd.Series:
     """
     Join essay from .txt file with test taker information and score
@@ -51,8 +52,9 @@ def get_all_filepaths(directory: str) -> list:
     return sorted(filepaths)
 
 
-def write_ets_csv(directory: str, output_filepath: str,
-                  join_table: pd.DataFrame) -> int:
+def write_ets_csv(
+    directory: str, output_filepath: str, join_table: pd.DataFrame
+) -> int:
     """
     Combine the extracted essay data from all .txt files into a single CSV file
     and log the number of observations present
@@ -76,16 +78,18 @@ def write_ets_csv(directory: str, output_filepath: str,
     essay_df.to_csv(output_filepath, index=False)
     return int(essay_df.shape[0])
 
+
 if __name__ == "__main__":
     if (len(sys.argv)) != 4:
         print("Usage:")
-        print("  $ python3 src/01-process-ets.py", end = " ")
+        print("  $ python3 src/01-process-ets.py", end=" ")
         print("<ets_dir> <join_tab> <out_path>")
         sys.exit(0)
 
     ets_dir = os.path.join(os.getcwd(), sys.argv[1])
-    join_tab = pd.read_csv(os.path.join(os.getcwd(), sys.argv[2]),
-                           dtype=str, index_col="Filename")
+    join_tab = pd.read_csv(
+        os.path.join(os.getcwd(), sys.argv[2]), dtype=str, index_col="Filename"
+    )
     output_path = sys.argv[3]
 
     n_obs = write_ets_csv(ets_dir, output_path, join_tab)
