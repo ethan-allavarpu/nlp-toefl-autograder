@@ -1,0 +1,21 @@
+I agree with the statement that `` It is more important for students to understand Ideas and cocepts than it is for them to learn facts '' because understanding gives clarity on the issue .
+
+Understanding a concept or an idea will help the student in better implementation .
+When a problem occurs during the implementation of concept , It is important that student knows exactly where to look .
+This calrity can be attained only by understanding the concept and not by merely learning it .
+
+For example , when a student after his graduation joins a software technology firm as a fresher , he is relatively new to the real world .
+When asked to work on a project , he would feel comfortable with it if he understands the topic .
+And in the middle stages of implementation , if a problem has occured he will know exactly where to look for .
+learning facts will not help in understanding complex tasks .
+There is a danger of gettting stuck , unable to find answers .
+
+And also , Understanding concepts and ideas help in learnig complex tasks related to the topic .
+For example , a student who has learned C language in college might find it difficult to learn JAVA .
+But , A student who understands the concept of C language will find it easy to understand JAVA even though he might not have taken C language as a course in college .
+After all basics are the foundations for healthy higher learning .
+
+This phenomenon can be witnesse from the college level also .
+A student who is well versed in the basic concepts of high school education has a higher chance of making it to the college than a student who is not .
+
+Hence I conclude , saying that understanding ideas and concepts is better for a student than it is to learn them just for the sake of learning .

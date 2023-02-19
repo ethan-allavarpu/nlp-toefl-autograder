@@ -1,0 +1,15 @@
+Understanding the idea behind a fact is much more important than learning the fact by itself .
+This does not only apply to strict sciences like Math , but also to subject like History .
+
+In Math , there is a set of given truths from which the rest are inferred ( prooved ) .
+The statements obtained from this basic set are formalized in theorems , which , in turn can be used to proove further facts ( new theorems or corollaries ) .
+People lacking the understanding of the basic set of truths or how the theorems were prooved would not be able to achieve further learning .
+
+In subjects like History , while knowing the facts is very important and one may think that their whole field of study , understanding the reasons that gave place to an event may give a kind of knowledge much more usefull than the mere fact .
+This knowledge may help identify situations that may lead to problems in the future and prevent them .
+So , while knowing something took place by itself may not be of much help in the future , understanding the factors that gave rise to the situation and what their consequences were , could be very important .
+
+The gain we may obtain in the future by understanding ideas and concepts is the main reason we study .
+Facts by themselves may be useless , understanding the concepts behind them is what is usefull .
+If understanding and the reasoning that goes with it were or no consequence , having an encyclopec knowledge of things would be sufficient .
+And that is not the case , since we have institutions whose only reason of existance is reasearch , that is , understanding concepts and ideas , to generate new facts and knowlege that may better our society .

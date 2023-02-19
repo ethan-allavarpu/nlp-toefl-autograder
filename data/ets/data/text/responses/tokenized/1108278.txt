@@ -1,0 +1,19 @@
+It has been a long time disputing issue for which one is more important among student should understanding ideas and students should learn facts .
+For my view , I think it will depends .
+You need use different method to study in different time according to different requirements .
+
+Take studing mathmatics and phisics as an example .
+As all of you know , mathmatics and phisics are very logical subject and learning them needs very deep understanding of their facts .
+Only after that , you might be able to begin find out some essential of those subjects .
+for example , if you just have remenbered sping formular , not very understanding the theory and facts of the spring formular , it might be , perhaps , when you facing some relevant problem very easy , you might be able to solve the problem just use the spring formular you have remembered .
+However , if the problem you are going to face is the combination of different mechanic .
+You need to figure out effect of combination of mechanic which include spring mechanic area .
+You could solve the proble only if you know the thorough facts about sping including the reason of spring mechanic , process of spring mechanic , some special circumstance of spring mechanic , etc .
+
+Nevertheless , if you want to learn cmputer program language and want to just use it for application .
+You do not need to learn many details which sustain the higher application .
+Only some idears and concepts are enough , since nowadays , some lower level details and facts are integrated to a higher method of computer language .
+And those integration are the job of another computer experts , who need know facts from how memory comsumering to how to located the memory , etc .
+You can just think the higher method as a black box , just use it will be ok .
+
+So , it will be important to use fiffer

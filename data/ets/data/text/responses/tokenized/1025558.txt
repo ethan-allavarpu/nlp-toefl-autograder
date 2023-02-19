@@ -1,0 +1,14 @@
+While a large number of students realize that understanding the ideas and concepts are the basis of a learning process , I tend to believe that learning facts is more important .
+
+First , the facts let the students know the implementation and design based on the abstract ieads and concepts on the textbook .
+A student who conducts and manages a software development team may have deeper understanding over the area of software design and human resource management than the one who only learn from the books .
+For example , a designer may have more detailed and deepened comprehension of the internal core thinking , which is the most valuable part in his job , after he finishes a design by researching and review a lot of books and articles including concepts proposed before .
+
+In addition , it makes more sense for a student to learn the facts brought by his or her own hand-on experiment .
+When I was a member in the web development team of our university website , I learned a lot from the practice of installing and configuring the web server and writing code for a web application , which is not fully stated on any book in the book store .
+This makes my way more broad and easier to go to achieve expertise on the field of conputer science .
+
+Lastly , learning facts is a higher level that just understanding the original ideas and concepts .
+The students who knows how to put the principles into the daily work may show a stronger ability to master not only what to learn but also how to learn , that is to say , they are more likely to become a quick learner , an ability which is called for by many international business companies such as Microsoft , Google and IBM .
+
+From all the discussion I mentioned above , we could safely draw a conclusion that learning facts takes a more significant position that just understanding the ideas and concepts in the learning process .

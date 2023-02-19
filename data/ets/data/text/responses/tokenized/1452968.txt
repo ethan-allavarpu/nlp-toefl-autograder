@@ -1,0 +1,23 @@
+Today , specialization on a specific academic subject is a must for most of the researchers .
+Where innovations need different appoaches to the problem , most of the research work carried out today requires improvements on the previous results .
+Having a broad knowledge on a specific topic is not enough to improve an existing research , even to do innovations .
+Instead , science makes harder to specialize where it eases to access knowledge .
+
+Improvements and innovations in science pushes people to specialize on certain topics rather than having the broad knowledge on seperate topics .
+New innovations , improvements require more and more specialization on the studied topic since the research area divides into sub-areas .
+For example , the first computer was made by electronical engineers while the future improvements lead to a new academic area called `` computer science '' .
+At this point , no generic improvements can made on this area , because it is already divided into several sub-areas like networking , computer vision , algorithms , etc .
+These sub-areas are also dividing into sub-areas , like wireless networking , leading to the constant specialization on the certain area .
+
+Specialization on a specific area lets researchers to concentrate on the subject that they are researching on , making unnecessary parts unavaliable .
+In the early times of computers , programming and electronical engineering were closely related and most of the research is carried on by the people with the electronics background .
+But with the improvements on the technology , programming and electronics begin to split up .
+Today , there is still related subjects which brings computer scientists and electronical engineers together , but today for most of the people working on the electronics field , programming is not a `` must '' if they research on computers .
+
+In today 's world , information is widely accessible with technologies used like world wide web ( www ) .
+In the old times , accessing knowledge was hard because of using books , connection problems and distances between researchers from different cities or countries .
+Today 's technology allows everyone to access knowledge and have it .
+So this forces people to specialize on topics instead of having broad information alone .
+
+Specialization on certain academic subjects increased the opportunity to improve previous work and innovate .
+Having only the broad information is not enough for future tech .

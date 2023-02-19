@@ -1,0 +1,23 @@
+The topic given says that after twenty years there will be fewer cars in use than as of today .
+I do n't think one can answer this question in YES or NO .
+As we will see it depends on a lot of factors , so we need to analyze them closely , only then we can conclude something .
+
+It depends a lot on the geographical area we are talking about .
+If we consider the question for the whole world even then we have to deal and analyze the question for different geographical areas individually and then sum them up .
+For example a country where technical development has not taken place too much ; there , in coming future , considerable amount of people might switch from two wheelers to cars as prices of car might go down with more technical development and at the same time cars offer more convenience .
+However think of a hypothetical situation in which a technically very advanced country starts using a new vehicle which is cheaper in manufacturing costs and offer more convenience .
+There people will prefer to stop using cars .
+Now lets consider a country which is far located from petroleum resources and have to face a lot expenses in importing all those things , the government there might encourage racing cycles or something like that .
+
+Looking at different perspective , if transportation system in country is local trains and this systems is getting better day by day .
+What we mean by getting better is : It is cheaper , convenient and safer than driving your own car/cab .
+Then people will prefer not to use cars .
+
+However if above happens and as a result accident rates among local trains and rush inside the trains increase , this would be sign for using your own cars again .
+So we see that it is type of oscillation behaviour but we do n't know the period of such behaviour so we ca n't really predict what will happen after 20 years .
+
+Now looking from environmental perspective , if cars continue to pollute the surroundings as they are doing today ( at least in countries like India ) , government might take decision to discourage the ownership of cars .
+But if we found a good way to stop pollution caused by cars ( like using CNG Gas etc ) we might end up having more cars at the end of twenty years from now .
+
+Therefore we can clearly see that the question given does n't have certain black or white answer as of today .
+It is complicated function of many things whose condition after twenty years can not be judged accurately today .
