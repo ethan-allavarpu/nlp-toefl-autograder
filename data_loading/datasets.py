@@ -21,8 +21,10 @@ class DefaultDataset(torch.utils.data.Dataset):
         # here we can provide the tokenizer!
         self.tokenizer = tokenizer
         # default tokenizer params
-        self.tokenizer_params = tokenizer_params if tokenizer_params else {'padding': 'max_length', 'max_length': max(self.data[input_col].str.len()),
-         'truncation': True} 
+        self.tokenizer_params = tokenizer_params if tokenizer_params else {'padding': 
+        'max_length', 
+        'max_length': max([len(t) for t in self.tokenizer(self.inputs['full_text'].to_list())['input_ids']]),
+         'truncation': True, 'return_tensors': 'pt'} 
     
     def normalize_targets(self, normalize_score: float = 100.0) -> None:
         self.targets = (self.targets) / self.targets.max(axis=0) * normalize_score
