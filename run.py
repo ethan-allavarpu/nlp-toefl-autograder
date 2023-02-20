@@ -24,7 +24,7 @@ device = torch.cuda.current_device() if torch.cuda.is_available() else 'mps'
 
 
 # instantiate the tokenizer
-tokenizer = AutoTokenizer.from_pretrained("google/bigbird-pegasus-large-arxiv")
+tokenizer = AutoTokenizer.from_pretrained("allenai/longformer-base-4096")
 # instantiate the dataset
 dataset = DefaultDataset(file_path=ELL_DATA_DIR, input_col='full_text', target_cols=['cohesion'], index_col='text_id', 
                              tokenizer=tokenizer)
