@@ -13,5 +13,5 @@ REPLACE_DICT = {
 
 if __name__ == "__main__":
     df = pd.read_csv("data/ell/datasets/original_data.csv")
-    df = df['full_text'].replace(REPLACE_DICT)
+    df['full_text'] = df['full_text'].replace(REPLACE_DICT)
     df.to_csv("data/ell-data.csv", index=False)
