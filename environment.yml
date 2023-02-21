@@ -1,0 +1,19 @@
+name: nlp-autograder
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.8
+  - pandas
+  - pytorch
+  - numpy
+  - scipy
+  - tqdm
+  - docopt
+  - nltk
+  - torchvision
+  - pip
+  - pip:
+    - sentencepiece
+    - sacrebleu
+    - tensorboard
