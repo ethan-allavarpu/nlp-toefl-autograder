@@ -12,15 +12,15 @@ import argparse
 from modeling import trainer
 from data_loading.datasets import DefaultDataset
 from data_loading.dataloaders import get_data_loaders
-from settings import ELL_DATA_DIR
+from settings import ELL_DATA_DIR, FCE_DATA_DIR, ETS_DATA_DIR, ICNALE_EDITED_DATA_DIR, ICNALE_WRITTEN_DATA_DIR
 
 
 argp = argparse.ArgumentParser()
-argp.add_argument('writing_params_path', type=str, help='Path to the writing params file')
-argp.add_argument('tokenizer_name', type=str, help='Name of the tokenizer to use', default="distilbert-base-uncased")
-argp.add_argument('dataset', type=str, help='Name of the dataset to use')
-argp.add_argument('max_epochs', type=int, help='Number of epochs to train for')
-argp.add_argument('learning_rate', type=float, help='Learning rate')
+argp.add_argument('--writing_params_path', type=str, help='Path to the writing params file', default="writing_params.json", required=False)
+argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to use', default="distilbert-base-uncased", required=False)
+argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="ICNALE-EDITED", required=False)
+argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=500, required=False)
+argp.add_argument('--learning_rate', type=float, help='Learning rate', default=0.01, required=False)
 args = argp.parse_args()
 
 # Save the device
@@ -33,6 +33,9 @@ tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, trust_remote_code
 # instantiate the dataset
 if args.dataset == "ELL":
     dataset = DefaultDataset(file_path=ELL_DATA_DIR, input_col='full_text', target_cols=['cohesion', 'syntax',  'vocabulary',  'phraseology',  'grammar',  'conventions'], index_col='text_id', 
+                             tokenizer=tokenizer)
+elif args.dataset == "ICNALE-EDITED":
+    dataset = DefaultDataset(file_path=ICNALE_EDITED_DATA_DIR, input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
                              tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
@@ -48,6 +51,6 @@ train_config = trainer.TrainerConfig(max_epochs=args.max_epochs,
         num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
 model = BaseModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
-trainer = trainer.Trainer(model, train_dl, test_size, train_config)
+trainer = trainer.Trainer(model, train_dl, test_dl, train_config)
 trainer.train()
 torch.save(model.state_dict(), args.writing_params_path)

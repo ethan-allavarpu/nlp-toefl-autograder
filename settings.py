@@ -3,4 +3,5 @@
 ELL_DATA_DIR = 'data/ell-data.csv'
 FCE_DATA_DIR = "data/fce-data.csv"
 ETS_DATA_DIR = "data/ets-data.csv"
-ICNALE_DATA_DIR = "data/icnale-data.csv"
+ICNALE_EDITED_DATA_DIR = "data/icnale-data-edited.csv"
+ICNALE_WRITTEN_DATA_DIR = "data/icnale-data-written.csv"
