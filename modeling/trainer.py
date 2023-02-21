@@ -79,7 +79,7 @@ class Trainer:
 
                 # place data on the correct device
                 x = x.to(self.device)
-                y = y.to(self.device)
+                y = y.to(torch.float32).to(self.device)
 
                 # forward the model
                 with torch.set_grad_enabled(is_train):
@@ -112,7 +112,7 @@ class Trainer:
         for epoch in range(config.max_epochs):
 
             run_epoch('train')
-            if self.test_dataset is not None:
+            if self.test_dataloader:
                 run_epoch('test')
 
             self.save_checkpoint()
