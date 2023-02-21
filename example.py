@@ -6,7 +6,7 @@ from transformers import AutoTokenizer
 
 if __name__ == "__main__":
     # instantiate the tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("siebert/sentiment-roberta-large-english")
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-cased")
     # instantiate the dataset
     dataset = DefaultDataset(file_path=ELL_DATA_DIR, input_col='full_text', target_cols=['cohesion'], index_col='text_id', 
                              tokenizer=tokenizer)
