@@ -29,17 +29,13 @@ def get_evaluation_metrics(pred_vals: np.array, true_vals=np.array) -> tuple:
 if __name__ == "__main__":
     if (len(sys.argv)) != 4:
         print("Usage:")
-        print("  $ python3 src/evaluation.py", end=" ")
-        print("<ets_preds> <nlp_preds> <fce_data>")
+        print("  $ python3 src/evaluation.py <nlp_preds> <fce_data>")
         sys.exit(0)
 
-    ets_preds = np.loadtxt(os.path.join(os.getcwd(), sys.argv[1]))
-    nlp_preds = np.loadtxt(os.path.join(os.getcwd(), sys.argv[2]))
-    fce = pd.read_csv(os.path.join(os.getcwd(), sys.argv[3]))
+    nlp_preds = np.loadtxt(os.path.join(os.getcwd(), sys.argv[1]))
+    fce = pd.read_csv(os.path.join(os.getcwd(), sys.argv[2]))
     true_scores = fce.overall_score.to_numpy()
 
-    ets_rmse, ets_r2 = get_evaluation_metrics(ets_preds, true_scores)
     nlp_rmse, nlp_r2 = get_evaluation_metrics(nlp_preds, true_scores)
 
-    print(f"RMSE for ETS: {ets_rmse}. RMSE for NLP model: {nlp_rmse}")
-    print(f"R-squared for ETS: {ets_r2}. R-squared for NLP model: {nlp_r2}")
+    print(f"RMSE for NLP model: {nlp_rmse}. R-squared for NLP model: {nlp_r2}")
