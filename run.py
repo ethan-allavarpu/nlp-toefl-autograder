@@ -16,6 +16,7 @@ from settings import ELL_DATA_DIR, FCE_DATA_DIR, ETS_DATA_DIR, ICNALE_EDITED_DAT
 
 
 argp = argparse.ArgumentParser()
+argp.add_argument('function', help="Choose pretrain, finetune, or evaluate") #TODO: add behavior for pretrain and eval
 argp.add_argument('--writing_params_path', type=str, help='Path to the writing params file', default="writing_params.json", required=False)
 argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to use', default="distilbert-base-uncased", required=False)
 argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="ICNALE-EDITED", required=False)
@@ -37,20 +38,32 @@ if args.dataset == "ELL":
 elif args.dataset == "ICNALE-EDITED":
     dataset = DefaultDataset(file_path=ICNALE_EDITED_DATA_DIR, input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
                              tokenizer=tokenizer)
+elif args.dataset == "ICNALE-WRITTEN": #TODO: lots of missing fields in this dataset, what imputations should we use?
+    dataset = DefaultDataset(file_path=ICNALE_WRITTEN_DATA_DIR, input_col='essay', target_cols=['Score'], index_col=None, 
+                             tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
                              
-# get the dataloaders. can make test and val sizes 0 if you don't want them
-train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
-    test_batch_size=1, num_workers=0)
-# TensorBoard training log
-writer = SummaryWriter(log_dir='expt/')
 
-train_config = trainer.TrainerConfig(max_epochs=args.max_epochs, 
-        learning_rate=args.learning_rate, 
-        num_workers=4, writer=writer, ckpt_path='expt/params.pt')
+if args.function == 'pretrain':
+    pass
 
-model = BaseModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
-trainer = trainer.Trainer(model, train_dl, test_dl, train_config)
-trainer.train()
-torch.save(model.state_dict(), args.writing_params_path)
+elif args.function == 'finetune':
+    max_epochs = 20
+    # get the dataloaders. can make test and val sizes 0 if you don't want them
+    train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
+        test_batch_size=1, num_workers=0)
+    # TensorBoard training log
+    writer = SummaryWriter(log_dir='expt/')
+
+    train_config = trainer.TrainerConfig(max_epochs=max_epochs, 
+            learning_rate=args.learning_rate, 
+            num_workers=4, writer=writer, ckpt_path='expt/params.pt')
+
+    model = BaseModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+    trainer = trainer.Trainer(model, train_dl, test_dl, train_config)
+    trainer.train()
+    torch.save(model.state_dict(), args.writing_params_path)
+
+if args.function == 'evaluate':
+    pass
