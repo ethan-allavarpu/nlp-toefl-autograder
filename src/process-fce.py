@@ -136,6 +136,13 @@ def write_fce_csv(directory: str, output_filepath: str) -> int:
     essay_df.dropna().reset_index(drop=True).to_csv(
         output_filepath.replace(".csv", "-full-obs.csv"), index=False
     )
+    essay_df.dropna().loc[
+        :, ["sortkey", "response_1_essay", "response_2_essay", "overall_score"]
+    ].melt(id_vars=["sortkey", "overall_score"]).drop(columns="variable").rename(
+        columns={"value": "essay"}
+    ).to_csv(
+        output_filepath.replace(".csv", "-input-format.csv"), index=False
+    )
     return int(essay_df.shape[0])
 
 
