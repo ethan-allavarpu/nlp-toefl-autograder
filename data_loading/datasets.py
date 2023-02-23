@@ -2,6 +2,7 @@ import pandas as pd
 import torch
 from typing import Sequence, Any, Dict, Tuple, TypeVar
 import numpy as np
+from datasets import load_dataset, Dataset
 
 T_co = TypeVar('T_co', covariant=True)
 
@@ -38,6 +39,30 @@ class DefaultDataset(torch.utils.data.Dataset):
             # input is already tokenized
             features = self.inputs.loc[idx].values
         return features, self.targets.loc[idx].values
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+
+class SpeechDataset(torch.utils.data.Dataset):
+    def __init__(self, path_name: str, input_col: str, target_cols: Sequence[str], 
+                 tokenizer: Any = None, tokenizer_params: Dict = None):
+        self.data = load_dataset(path_name, split='train')
+
+        tokenizer_params = tokenizer_params if tokenizer_params else {'sampling_rate':tokenizer.sampling_rate, 'max_length': 16000, 
+        'truncation': True}
+        self.inputs = tokenizer(
+        [x[input_col]['array'] for x in self.data], ** tokenizer_params)['input_values']
+
+        self.targets = pd.DataFrame([[x[t] for t in target_cols] for x in self.data ], columns=target_cols)
+        # normalize the targets
+        self.normalize_targets()
+    
+    def normalize_targets(self, normalize_score: float = 100.0) -> None:
+        self.targets = (self.targets) / self.targets.max(axis=0) * normalize_score
+
+    def __getitem__(self, index: Any) -> T_co:
+        return self.inputs[index], self.targets.loc[index].values
 
     def __len__(self) -> int:
         return len(self.data)
