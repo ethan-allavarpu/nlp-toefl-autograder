@@ -133,6 +133,9 @@ def write_fce_csv(directory: str, output_filepath: str) -> int:
     essay_files = get_all_filepaths(directory)
     essay_df = pd.DataFrame([extract_essay_data(file) for file in essay_files])
     essay_df.to_csv(output_filepath, index=False)
+    essay_df.dropna().reset_index(drop=True).to_csv(
+        output_filepath.replace(".csv", "-full-obs.csv"), index=False
+    )
     return int(essay_df.shape[0])
 
 
