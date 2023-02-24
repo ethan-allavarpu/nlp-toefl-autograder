@@ -78,16 +78,15 @@ elif args.function == 'evaluate':
     predictions = []
 
     pbar = tqdm(enumerate(test_dl), total=len(test_dl)) 
-    for it, (x, _) in pbar:
+    for it, (x, y) in pbar:
         # place data on the correct device
         x = x.to(device)
-        
-        predictions.append(model(x)[0].item())
+        predictions.append((model(x)[0].item(), y[0].item()))
         torch.cuda.empty_cache()
 
     with open('predictions.txt', 'w') as f:
         for pred in predictions:
-            f.write(f"{pred}\n")
+            f.write(f"{pred[0]},{pred[1]}\n")
     
 
 else:
