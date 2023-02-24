@@ -12,7 +12,6 @@ class BaseModel(torch.nn.Module):
         self.l3 = torch.nn.Linear(512*768, num_outputs)
     
     def forward(self, data: Any, targets: Any = None):
-        print([x for x in self.parameters()][0])
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, 512*768))
