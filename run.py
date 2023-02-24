@@ -72,24 +72,23 @@ elif args.function == 'evaluate':
         test_batch_size=1, num_workers=0)
     model = BaseModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
 
-    model.load_state_dict(torch.load('expt/params.pt')) #TODO: replace with args.reading_params_path
+    model.load_state_dict(torch.load('finetune-baseline.params')) #TODO: replace with args.reading_params_path
     model = model.to(device)
+    model.eval()
     predictions = []
 
     pbar = tqdm(enumerate(test_dl), total=len(test_dl)) 
-    for it, (x, y) in pbar:
+    for it, (x, _) in pbar:
         # place data on the correct device
         x = x.to(device)
-        y = y.to(torch.float32).to(device)
         
-        predictions.append(model(x))
+        predictions.append(model(x)[0].item())
         torch.cuda.empty_cache()
 
-
-    f = open("predictions.txt", "x")
-    f.write(predictions)
-    f.close()
-    pass
+    with open('predictions.txt', 'w') as f:
+        for pred in predictions:
+            f.write(f"{pred}\n")
+    
 
 else:
     print("Invalid function name. Choose pretrain, finetune, or evaluate")
