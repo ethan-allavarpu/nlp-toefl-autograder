@@ -64,7 +64,7 @@ class Trainer:
             {"params": params_decay, "weight_decay": config.weight_decay},
             {"params": params_nodecay, "weight_decay": 0.0},
         ]
-        optimizer = optim.AdamW(optim_groups, lr=config.learning_rate, betas=config.betas)
+        optimizer = optim.AdamW(model.parameters(), lr=2e-5, betas=config.betas)
         step = 0
         def run_epoch(split):
             nonlocal step
@@ -76,7 +76,6 @@ class Trainer:
             pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
             
             for it, (x, y) in pbar:
-
                 # place data on the correct device
                 x = x.to(self.device)
                 y = y.to(torch.float32).to(self.device)
@@ -88,7 +87,6 @@ class Trainer:
                     losses.append(loss.item())
 
                 if is_train:
-
                     # backprop and update the parameters
                     model.zero_grad()
                     loss.backward()
