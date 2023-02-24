@@ -48,8 +48,9 @@ class SpeechDataset(torch.utils.data.Dataset):
     def __init__(self, path_name: str, input_col: str, target_cols: Sequence[str], 
                  tokenizer: Any = None, tokenizer_params: Dict = None):
         self.data = load_dataset(path_name, split='train')
+        self.tokenizer = tokenizer
 
-        tokenizer_params = tokenizer_params if tokenizer_params else {'sampling_rate':tokenizer.sampling_rate, 'max_length': 16000, 
+        tokenizer_params = tokenizer_params if tokenizer_params else {'sampling_rate':tokenizer.sampling_rate, 'max_length': tokenizer.sampling_rate, 
         'truncation': True}
         self.inputs = tokenizer(
         [x[input_col]['array'] for x in self.data], ** tokenizer_params)['input_values']

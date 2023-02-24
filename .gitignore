@@ -133,3 +133,5 @@ dmypy.json
 
 # image data
 *.WAV
+# params
+*.params

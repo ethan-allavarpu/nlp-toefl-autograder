@@ -22,8 +22,8 @@ argp.add_argument('--reading_params_path', type=str, help='Path to the reading p
 argp.add_argument('--outputs_path', type=str, help='Path to the output predictions', default="predictions.txt", required=False)
 argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to use', default="distilbert-base-uncased", required=False)
 argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="ICNALE-EDITED", required=False)
-argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=50, required=False)
-argp.add_argument('--learning_rate', type=float, help='Learning rate', default=0.01, required=False)
+argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=20, required=False)
+argp.add_argument('--learning_rate', type=float, help='Learning rate', default=2e-5, required=False)
 args = argp.parse_args()
 
 # Save the device
@@ -62,7 +62,7 @@ elif args.function == 'finetune':
             learning_rate=args.learning_rate, 
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
-    model = BaseModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+    model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
     trainer = trainer.Trainer(model, train_dl, test_dl, train_config)
     trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)

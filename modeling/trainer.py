@@ -64,7 +64,7 @@ class Trainer:
             {"params": params_decay, "weight_decay": config.weight_decay},
             {"params": params_nodecay, "weight_decay": 0.0},
         ]
-        optimizer = optim.AdamW(model.parameters(), lr=2e-5, betas=config.betas)
+        optimizer = optim.AdamW(model.parameters(), lr=config.learning_rate, betas=config.betas)
         step = 0
         def run_epoch(split):
             nonlocal step
