@@ -35,7 +35,8 @@ device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
 tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
 # instantiate the dataset
 if args.dataset == "SPEECHOCEAN":
-    dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols=['accuracy', 'completeness', 'fluency', 'prosodic', 'total'], tokenizer=tokenizer)
+    dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'completeness', 'fluency', 'prosodic', 'total'],
+    target_cols_words = ['accuracy', 'stress', 'total'], target_cols_phones = ['phones-accuracy'], tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
                              
@@ -54,7 +55,7 @@ elif args.function == 'finetune':
             learning_rate=args.learning_rate, 
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
-    model = SpeechModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name)
     trainer = trainer.Trainer(model, train_dl, test_dl, train_config)
     trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)

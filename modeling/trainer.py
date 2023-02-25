@@ -78,7 +78,10 @@ class Trainer:
             for it, (x, y) in pbar:
                 # place data on the correct device
                 x = x.to(self.device)
-                y = y.to(torch.float32).to(self.device)
+                if type(y) == list:
+                    y = [yy.to(self.device) for yy in y]
+                else:
+                    y = y.to(torch.float32).to(self.device)
 
                 # forward the model
                 with torch.set_grad_enabled(is_train):
