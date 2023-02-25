@@ -68,9 +68,12 @@ elif args.function == 'finetune':
     torch.save(model.state_dict(), args.writing_params_path)
 
 elif args.function == 'evaluate':
-    train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
+    test_size = 0.2
+    if args.dataset == "FCE":
+        test_size = 1
+    train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=test_size, batch_size=16, val_batch_size=1,
         test_batch_size=1, num_workers=0)
-    model = BaseModel(num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+    model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
 
     model.load_state_dict(torch.load(args.reading_params_path))
     model = model.to(device)
