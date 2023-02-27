@@ -23,6 +23,21 @@ class BaseModel(torch.nn.Module):
             loss = nn.MSELoss()(output.float(), targets.float())
         return output, loss
 
+class HierarchicalModel(torch.nn.Module):
+    def __init__(self, seq_length: int, num_outputs: int, pretrain_model_name: str):
+        super(BaseModel, self).__init__()
+        self.seq_length = seq_length
+        self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
+        self.l2 = torch.nn.Dropout(0.3)
+        self.l3 = torch.nn.Linear(self.seq_length*768, num_outputs)
+        self.l4 = torch.nn.Linear(num_outputs, 1)
+    
+    def forward(self, data: Any, targets: Any = None):
+        x1 = self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
+        x2 = self.l2(x1['last_hidden_state'].reshape(-1, self.seq_length*768))
+        output_1 = self.l3(x2)
+        output_2 = self.l4(output_1)
+        return output_1, output_2
 
 class SpeechModel(torch.nn.Module):
     def __init__(self, num_outputs: int, pretrain_model_name: str):

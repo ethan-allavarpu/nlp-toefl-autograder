@@ -41,7 +41,10 @@ elif args.dataset == "ICNALE-EDITED":
     dataset = DefaultDataset(file_path=ICNALE_EDITED_DATA_DIR, input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
                              tokenizer=tokenizer)
 elif args.dataset == "ICNALE-WRITTEN": #TODO: lots of missing fields in this dataset, what imputations should we use?
-    dataset = DefaultDataset(file_path=ICNALE_WRITTEN_DATA_DIR, input_col='essay', target_cols=['Score'], index_col=None, 
+    dataset = DefaultDataset(file_path=ICNALE_WRITTEN_DATA_DIR, input_col='essay', target_cols=['Score'], index_col="sortkey", 
+                             tokenizer=tokenizer)
+elif args.dataset == "FCE":
+    dataset = DefaultDataset(file_path=FCE_DATA_DIR, input_col='essay', target_cols=['overall_score'], 
                              tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
@@ -68,11 +71,11 @@ elif args.function == 'finetune':
     torch.save(model.state_dict(), args.writing_params_path)
 
 elif args.function == 'evaluate':
-    test_size = 0.2
     if args.dataset == "FCE":
-        test_size = 1
-    train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=test_size, batch_size=16, val_batch_size=1,
-        test_batch_size=1, num_workers=0)
+        test_dl = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False,num_workers=0)
+    else:
+        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.0, test_size=0.2, batch_size=16, val_batch_size=1,
+            test_batch_size=1, num_workers=0)
     model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
 
     model.load_state_dict(torch.load(args.reading_params_path))
