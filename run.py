@@ -77,7 +77,8 @@ elif args.function == 'evaluate':
         train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.0, test_size=0.2, batch_size=16, val_batch_size=1,
             test_batch_size=1, num_workers=0)
     model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
-
+    if args.dataset == "FCE" and "ell" in args.reading_params_path:
+        model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=6, pretrain_model_name=args.tokenizer_name)
     model.load_state_dict(torch.load(args.reading_params_path))
     model = model.to(device)
     model.eval()
@@ -87,7 +88,7 @@ elif args.function == 'evaluate':
     for it, (x, y) in pbar:
         # place data on the correct device
         x = x.to(device)
-        predictions.append((model(x)[0].item(), y[0].item()))
+        predictions.append((model(x)[0].mean().item(), y[0].mean().item()))
         torch.cuda.empty_cache()
 
     with open(args.outputs_path, 'w') as f:
