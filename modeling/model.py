@@ -12,7 +12,7 @@ class BaseModel(torch.nn.Module):
         self.l2 = torch.nn.Dropout(0.3)
         self.l3 = torch.nn.Linear(self.seq_length*768, num_outputs)
     
-    def forward(self, data: Any, targets: Any = None):
+    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
@@ -32,12 +32,18 @@ class HierarchicalModel(torch.nn.Module):
         self.l3 = torch.nn.Linear(self.seq_length*768, num_outputs)
         self.l4 = torch.nn.Linear(num_outputs, 1)
     
-    def forward(self, data: Any, targets: Any = None):
+    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         x1 = self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         x2 = self.l2(x1['last_hidden_state'].reshape(-1, self.seq_length*768))
         output_1 = self.l3(x2)
         output_2 = self.l4(output_1)
-        return output_1, output_2
+        if one_output:
+            output = output_2
+        else:
+            output = output_1
+        if targets is not None:
+            loss = nn.MSELoss()(output.float(), targets.float())
+        return output, loss
 
 class SpeechModel(torch.nn.Module):
     def __init__(self, num_outputs: int, pretrain_model_name: str):
@@ -46,7 +52,7 @@ class SpeechModel(torch.nn.Module):
         self.l2 = torch.nn.Dropout(0.3)
         self.l3 = torch.nn.Linear(49*768, num_outputs)
     
-    def forward(self, data: Any, targets: Any = None):
+    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         output_1= self.l1(data)
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = output_1['last_hidden_state'].reshape(-1, 49*768)

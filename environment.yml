@@ -8,6 +8,7 @@ dependencies:
   - pytorch
   - numpy
   - scipy
+  - scikit-learn
   - tqdm
   - docopt
   - nltk
