@@ -35,12 +35,13 @@ class HierarchicalModel(torch.nn.Module):
     def forward(self, data: Any, targets: Any = None, one_output: bool=True):
         x1 = self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         x2 = self.l2(x1['last_hidden_state'].reshape(-1, self.seq_length*768))
-        output_1 = self.l3(x2)
-        output_2 = self.l4(output_1)
+        multi_out = self.l3(x2)
+        single_out = self.l4(multi_out)
         if one_output:
-            output = output_2
+            output = single_out
         else:
-            output = output_1
+            output = multi_out
+
         loss = None
         if targets is not None:
             loss = nn.MSELoss()(output.float(), targets.float())
