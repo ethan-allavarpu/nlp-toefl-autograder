@@ -3,6 +3,7 @@ import torch
 from typing import Sequence, Any, Dict, Tuple, TypeVar
 import numpy as np
 from datasets import load_dataset, Dataset
+import torch.nn.functional as F
 from torch.nn.functional import pad
 
 T_co = TypeVar('T_co', covariant=True)
