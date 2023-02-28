@@ -122,7 +122,6 @@ elif args.function == 'evaluate':
         # place data on the correct device
         x = x.to(device)
         predictions.append((model(x)[0].mean().item(), y[0].mean().item()))
-        torch.cuda.empty_cache()
 
     with open(args.outputs_path, 'w') as f:
         for pred in predictions:
