@@ -107,7 +107,7 @@ elif args.function == 'evaluate':
     if args.dataset == "FCE":
         test_dl = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False,num_workers=0)
     else:
-        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.0, test_size=0.2, batch_size=16, val_batch_size=1,
+        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0.0, batch_size=16, val_batch_size=1,
             test_batch_size=1, num_workers=0)
     model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
     if args.dataset == "FCE" and "ell" in args.reading_params_path:
