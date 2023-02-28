@@ -138,6 +138,8 @@ class SpeechDataset(torch.utils.data.Dataset):
         if phones_output is not None:
             phones_output = torch.Tensor(phones_output)
             phones_output = pad(phones_output, (0, 30-phones_output.shape[1], 0, 0), value=-1)
+        if (not phones_output) and (not words_output):
+            return self.inputs[index], self.targets_sentence.loc[index].values
         return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output]
 
             

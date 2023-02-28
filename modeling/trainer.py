@@ -35,11 +35,13 @@ class TrainerConfig:
 
 class Trainer:
 
-    def __init__(self, model, train_dataloader, test_dataloader, config):
+    def __init__(self, model, train_dataloader, config, val_dataloader=None, test_dataloader=None):
         self.model = model
         self.train_dataloader = train_dataloader
         self.test_dataloader = test_dataloader
         self.config = config
+        self.val_dataloader = val_dataloader
+        self.losses = []
 
         # take over whatever gpus are on the system
         self.device = 'cpu'
@@ -70,7 +72,7 @@ class Trainer:
             nonlocal step
             is_train = split == 'train'
             model.train(is_train)
-            loader = self.train_dataloader if is_train else self.test_dataloader
+            loader = self.train_dataloader if is_train else self.val_dataloader
 
             losses = []
             pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
@@ -106,15 +108,19 @@ class Trainer:
                         config.writer.add_scalar('train/lr', lr, step)
                     
                 step += 1
+                return np.mean(losses)
             if not is_train:
-                logger.info("test loss: %f", np.mean(losses))
+                print("val loss: %f", np.mean(losses))
 
         self.tokens = 0 # counter used for learning rate decay
         for epoch in range(config.max_epochs):
 
-            run_epoch('train')
-            if self.test_dataloader:
-                run_epoch('test')
+            train_loss = run_epoch('train')
+            if self.val_dataloader:
+                val_loss = run_epoch('val')
+            else:
+                val_loss = None
+            self.losses.append((train_loss, val_loss))
 
             self.save_checkpoint()
 

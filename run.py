@@ -20,6 +20,7 @@ argp.add_argument('function', help="Choose pretrain, finetune, or evaluate") #TO
 argp.add_argument("--model_type", type=str, default="base", required=False)
 argp.add_argument('--writing_params_path', type=str, help='Path to the writing params file', required=False)
 argp.add_argument('--reading_params_path', type=str, help='Path to the reading params file', required=False)
+argp.add_argument('--loss_path', type=str, help='Path to the output losses', default="losses.txt", required=False)
 argp.add_argument('--outputs_path', type=str, help='Path to the output predictions', default="predictions.txt", required=False)
 argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to use', default="distilbert-base-uncased", required=False)
 argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="ICNALE-EDITED", required=False)
@@ -84,7 +85,10 @@ elif args.function == 'finetune':
         test_batch_size=1, num_workers=0)
     
         model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
-        trainer = trainer.Trainer(model, train_dl, test_dl, train_config)
+        trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
+        with open(args.loss_path, 'w') as f:
+            for loss in trainer.losses:
+                f.write(f"{loss[0]},{loss[1]}\n")
     
     elif args.model_type == "hierarchical":
         train_dl1, val_dl1, test_dl1 = get_data_loaders(dataset1, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
