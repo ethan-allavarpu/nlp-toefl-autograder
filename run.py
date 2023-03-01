@@ -81,7 +81,7 @@ elif args.function == 'finetune':
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
     # get the dataloaders. can make test and val sizes 0 if you don't want them
     if args.model_type == "base":
-        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
+        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0, batch_size=16, val_batch_size=1,
         test_batch_size=1, num_workers=0)
     
         model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)

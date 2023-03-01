@@ -108,7 +108,7 @@ class Trainer:
                         config.writer.add_scalar('train/lr', lr, step)
                     
                 step += 1
-                return np.mean(losses)
+            return np.mean(losses)
             if not is_train:
                 print("val loss: %f", np.mean(losses))
 
