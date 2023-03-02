@@ -167,19 +167,19 @@ class HierarchicalTrainer:
             loader2 = self.train_dataloader2 if is_train else self.test_dataloader2
 
             losses = []
-            pbar1 = tqdm(enumerate(loader1), total=len(loader1)) if is_train else enumerate(loader1)
+            pbar1 = tqdm(enumerate(zip(loader1, loader2)), total=len([*enumerate(zip(loader1, loader2))])) if is_train else enumerate(zip(loader1, loader2))
             
-            for it, (x, y) in pbar1:
+            for it, ((x1, y1), (x2, y2)) in pbar1:
                 # place data on the correct device
-                x = x.to(self.device)
-                if type(y) == list:
-                    y = [yy.to(self.device) for yy in y]
+                x1 = x1.to(self.device)
+                if type(y1) == list:
+                    y1 = [yy.to(self.device) for yy in y1]
                 else:
-                    y = y.to(torch.float32).to(self.device)
+                    y1 = y1.to(torch.float32).to(self.device)
 
                 # forward the model
                 with torch.set_grad_enabled(is_train):
-                    logits, loss = model(x, y, one_output=False)
+                    logits, loss = model(x1, y1, one_output=False)
                     loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
                     losses.append(loss.item())
 
@@ -200,20 +200,17 @@ class HierarchicalTrainer:
                         config.writer.add_scalar('train/lr', lr, step)
                     
                 step += 1
-            
-            pbar2 = tqdm(enumerate(loader2), total=len(loader2)) if is_train else enumerate(loader2)
-            
-            for it, (x, y) in pbar2:
+
                 # place data on the correct device
-                x = x.to(self.device)
-                if type(y) == list:
-                    y = [yy.to(self.device) for yy in y]
+                x2 = x2.to(self.device)
+                if type(y2) == list:
+                    y2 = [yy.to(self.device) for yy in y2]
                 else:
-                    y = y.to(torch.float32).to(self.device)
+                    y2 = y2.to(torch.float32).to(self.device)
 
                 # forward the model
                 with torch.set_grad_enabled(is_train):
-                    logits, loss = model(x, y)
+                    logits, loss = model(x2, y2, one_output=True)
                     loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
                     losses.append(loss.item())
 
@@ -227,12 +224,11 @@ class HierarchicalTrainer:
                     lr = config.learning_rate
 
                     # report progress
-                    pbar2.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
+                    pbar1.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
                     
                     if config.writer is not None:
                         config.writer.add_scalar('train/loss',  loss.item(), step)
                         config.writer.add_scalar('train/lr', lr, step)
-                    
                 step += 1
             if not is_train:
                 logger.info("test loss: %f", np.mean(losses))
