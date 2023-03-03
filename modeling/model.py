@@ -10,13 +10,18 @@ class BaseModel(torch.nn.Module):
         self.seq_length = seq_length
         self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
         self.l2 = torch.nn.Dropout(0.3)
-        self.l3 = torch.nn.Linear(self.seq_length*768, num_outputs)
-    
+        self.l3 = torch.nn.Linear(self.seq_length*768, self.seq_length)
+        self.l4 = torch.nn.ReLU()
+        self.l5 = torch.nn.Linear(self.seq_length, num_outputs)
+
+        
     def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
-        output = self.l3(output_2)
+        output_3 = self.l3(output_2)
+        output_4 = self.l4(output_3)
+        output = self.l5(output_4)
         # if we are given some desired targets also calculate the loss
         loss = None
         if targets is not None:
