@@ -212,17 +212,8 @@ class HierarchicalTrainer:
                     lr = config.learning_rate
                     # decay the learning rate based on our progress
                     if config.lr_decay:
-                        self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
-                        if self.tokens < config.warmup_tokens:
-                            # linear warmup
-                            lr_mult = float(self.tokens) / float(max(1, config.warmup_tokens))
-                        else:
-                            # cosine learning rate decay
-                            progress = float(self.tokens - config.warmup_tokens) / float(max(1, config.final_tokens - config.warmup_tokens))
-                            lr_mult = max(0.1, 0.5 * (1.0 + math.cos(math.pi * progress)))
-                        lr = config.learning_rate * lr_mult
-                        for param_group in optimizer.param_groups:
-                            param_group['lr'] = lr
+                        # TODO: Implement learning rate decay
+                        pass
                     else:
                         lr = config.learning_rate
                     # report progress
@@ -257,17 +248,8 @@ class HierarchicalTrainer:
                     lr = config.learning_rate
                     # decay the learning rate based on our progress
                     if config.lr_decay:
-                        self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
-                        if self.tokens < config.warmup_tokens:
-                            # linear warmup
-                            lr_mult = float(self.tokens) / float(max(1, config.warmup_tokens))
-                        else:
-                            # cosine learning rate decay
-                            progress = float(self.tokens - config.warmup_tokens) / float(max(1, config.final_tokens - config.warmup_tokens))
-                            lr_mult = max(0.1, 0.5 * (1.0 + math.cos(math.pi * progress)))
-                        lr = config.learning_rate * lr_mult
-                        for param_group in optimizer.param_groups:
-                            param_group['lr'] = lr
+                        # TODO: Implement learning rate decay
+                        pass
                     else:
                         lr = config.learning_rate
                     # report progress

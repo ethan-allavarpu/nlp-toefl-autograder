@@ -25,7 +25,7 @@ class DefaultDataset(torch.utils.data.Dataset):
         self.inputs = pd.DataFrame(self.data[input_col])
         self.targets = pd.DataFrame(self.data[target_cols])
         # normalize the targets
-        self.standardize_targets()
+        self.normalize_targets()
         # here we can provide the tokenizer!
         self.tokenizer = tokenizer
         # default tokenizer params
