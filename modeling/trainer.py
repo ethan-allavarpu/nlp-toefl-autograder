@@ -24,6 +24,11 @@ class TrainerConfig:
     betas = (0.9, 0.95)
     grad_norm_clip = 1.0
     weight_decay = 0.1 # only applied on matmul weights
+    # learning rate decay params: linear warmup followed by cosine decay to 10% of original
+    lr_decay = False
+    warmup_tokens = 1e6 # these two numbers come from the GPT-3 paper, but may not be good defaults elsewhere
+    final_tokens = 260e9 # (at what point we reach 10% of original LR)
+    # checkpoint settings
     # checkpoint settings
     ckpt_path = None
     num_workers = 0 # for DataLoader
@@ -99,7 +104,21 @@ class Trainer:
                     optimizer.step()
 
                     lr = config.learning_rate
-
+                    # decay the learning rate based on our progress
+                    if config.lr_decay:
+                        self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
+                        if self.tokens < config.warmup_tokens:
+                            # linear warmup
+                            lr_mult = float(self.tokens) / float(max(1, config.warmup_tokens))
+                        else:
+                            # cosine learning rate decay
+                            progress = float(self.tokens - config.warmup_tokens) / float(max(1, config.final_tokens - config.warmup_tokens))
+                            lr_mult = max(0.1, 0.5 * (1.0 + math.cos(math.pi * progress)))
+                        lr = config.learning_rate * lr_mult
+                        for param_group in optimizer.param_groups:
+                            param_group['lr'] = lr
+                    else:
+                        lr = config.learning_rate
                     # report progress
                     pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
                     
@@ -191,7 +210,21 @@ class HierarchicalTrainer:
                     optimizer.step()
 
                     lr = config.learning_rate
-
+                    # decay the learning rate based on our progress
+                    if config.lr_decay:
+                        self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
+                        if self.tokens < config.warmup_tokens:
+                            # linear warmup
+                            lr_mult = float(self.tokens) / float(max(1, config.warmup_tokens))
+                        else:
+                            # cosine learning rate decay
+                            progress = float(self.tokens - config.warmup_tokens) / float(max(1, config.final_tokens - config.warmup_tokens))
+                            lr_mult = max(0.1, 0.5 * (1.0 + math.cos(math.pi * progress)))
+                        lr = config.learning_rate * lr_mult
+                        for param_group in optimizer.param_groups:
+                            param_group['lr'] = lr
+                    else:
+                        lr = config.learning_rate
                     # report progress
                     pbar1.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
                     
@@ -222,13 +255,28 @@ class HierarchicalTrainer:
                     optimizer.step()
 
                     lr = config.learning_rate
-
+                    # decay the learning rate based on our progress
+                    if config.lr_decay:
+                        self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
+                        if self.tokens < config.warmup_tokens:
+                            # linear warmup
+                            lr_mult = float(self.tokens) / float(max(1, config.warmup_tokens))
+                        else:
+                            # cosine learning rate decay
+                            progress = float(self.tokens - config.warmup_tokens) / float(max(1, config.final_tokens - config.warmup_tokens))
+                            lr_mult = max(0.1, 0.5 * (1.0 + math.cos(math.pi * progress)))
+                        lr = config.learning_rate * lr_mult
+                        for param_group in optimizer.param_groups:
+                            param_group['lr'] = lr
+                    else:
+                        lr = config.learning_rate
                     # report progress
                     pbar1.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
                     
                     if config.writer is not None:
                         config.writer.add_scalar('train/loss',  loss.item(), step)
                         config.writer.add_scalar('train/lr', lr, step)
+                    
                 step += 1
             if not is_train:
                 logger.info("test loss: %f", np.mean(losses))
