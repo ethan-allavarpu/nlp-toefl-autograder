@@ -61,7 +61,11 @@ class SpeechDataset(torch.utils.data.Dataset):
         tokenizer_params = tokenizer_params if tokenizer_params else {'sampling_rate':tokenizer.sampling_rate, 'max_length': tokenizer.sampling_rate, 
         'truncation': True}
         self.inputs = tokenizer(
-        [x[input_col]['array'] for x in self.data], ** tokenizer_params)['input_values']
+        [x[input_col]['array'] for x in self.data], ** tokenizer_params)
+        self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
+        
+        # TODO: play with this later
+        
 
         self.targets_sentence = pd.DataFrame([[x[t] for t in target_cols_sentence] for x in self.data ], columns=target_cols_sentence)
         if (len(target_cols_words) > 0) | (len(target_cols_phones) > 0):
@@ -126,7 +130,7 @@ class SpeechDataset(torch.utils.data.Dataset):
                     row[label] = [score/max_score*100 for score in row[label]]
                     return row
                 # max_score = self.targets_phones.apply(lambda x: max(list(map(max, x[label]))), axis=1).max()
-                max_score = self.targets_words.apply(lambda x: max(x[label]), axis=1).max()
+                max_score = self.targets_phones.apply(lambda x: max(x[label]), axis=1).max()
                 self.targets_phones = self.targets_phones.apply(normalize_score, max_score =max_score, axis=1)
 
     def __getitem__(self, index: Any) -> T_co:
@@ -138,7 +142,7 @@ class SpeechDataset(torch.utils.data.Dataset):
         if phones_output is not None:
             phones_output = torch.Tensor(phones_output)
             phones_output = pad(phones_output, (0, 30-phones_output.shape[1], 0, 0), value=-1)
-        if (not phones_output) and (not words_output):
+        if (phones_output is None) and (words_output is None):
             return self.inputs[index], self.targets_sentence.loc[index].values
         return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output]
 
