@@ -75,6 +75,8 @@ def write_ets_csv(
     essay_files = get_all_filepaths(directory)
     essay_df = [join_essay_score(file, join_table) for file in essay_files]
     essay_df = pd.DataFrame(essay_df)
+    score_dict = {"low": 1, "medium": 2, "high": 3}
+    essay_df.score = essay_df.score.apply(lambda x: score_dict[x])
     essay_df.to_csv(output_filepath, index=False)
     return int(essay_df.shape[0])
 
@@ -84,6 +86,7 @@ if __name__ == "__main__":
         print("Usage:")
         print("  $ python3 src/process-ets.py", end=" ")
         print("<ets_dir> <join_tab> <out_path>")
+        # python src/process-ets.py data/ets/data/text/responses/original data/ets/data/text/index.csv data/ets.csv
         sys.exit(0)
 
     ets_dir = os.path.join(os.getcwd(), sys.argv[1])

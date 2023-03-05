@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn import functional as F
-from modeling.model import BaseModel, HierarchicalModel
+from modeling.model import BaseModel, ETSModel, HierarchicalModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoTokenizer
 import random
@@ -27,17 +27,18 @@ argp.add_argument('--dataset', type=str, help='Name of the dataset to use', defa
 argp.add_argument("--ICNALE_output", type=str, help="Use 'categories' or 'overall' score", default="overall", required=False)
 argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=20, required=False)
 argp.add_argument('--learning_rate', type=float, help='Learning rate', default=2e-5, required=False)
+argp.add_argument('--lr_decay', type=str, help='Decay Learning Rate', default="False", required=False)
 args = argp.parse_args()
 
 # Save the device
 device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
-
+args.lr_decay = args.lr_decay == "True"
 
 # instantiate the tokenizer
 # tokenizer = AutoTokenizer.from_pretrained("ccdv/lsg-xlm-roberta-base-4096", trust_remote_code=True)
 tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, trust_remote_code=True)
 # instantiate the dataset
-if args.model_type == "base":
+if args.model_type in ["base", "ets"]:
     if args.dataset == "ELL":
         dataset = DefaultDataset(file_path=ELL_DATA_DIR, input_col='full_text', target_cols=['cohesion', 'syntax',  'vocabulary',  'phraseology',  'grammar',  'conventions'], index_col='text_id', 
                                 tokenizer=tokenizer)
@@ -55,6 +56,9 @@ if args.model_type == "base":
     elif args.dataset == "FCE":
         dataset = DefaultDataset(file_path=FCE_DATA_DIR, input_col='essay', target_cols=['overall_score'], 
                                 tokenizer=tokenizer)
+    elif args.dataset == "ETS":
+        dataset = DefaultDataset(file_path=ETS_DATA_DIR, input_col='response', target_cols=['score'], 
+                                tokenizer=tokenizer)
     else:
         raise ValueError("Invalid dataset name")
 elif args.model_type == "hierarchical":
@@ -66,18 +70,56 @@ elif args.model_type == "hierarchical":
     elif args.dataset == "FCE":
         dataset = DefaultDataset(file_path=FCE_DATA_DIR, input_col='essay', target_cols=['overall_score'], 
                                 tokenizer=tokenizer)
+    elif args.dataset == "ICNALE-EDITED":
+        if args.ICNALE_output == "overall":
+            dataset = DefaultDataset(file_path=ICNALE_EDITED_DATA_DIR, input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
+                                    tokenizer=tokenizer)
+        else:
+            dataset = DefaultDataset(file_path=ICNALE_EDITED_DATA_DIR, input_col='essay', target_cols=['Content (/12)', 'Organization (/12)',
+        'Vocabulary (/12)', 'Language Use (/12)', 'Mechanics (/12)'], index_col=None, 
+                                    tokenizer=tokenizer)
+    elif args.dataset == "ETS":
+        dataset = DefaultDataset(file_path=ETS_DATA_DIR, input_col='response', target_cols=['score'], 
+                                tokenizer=tokenizer)
     else:
         raise ValueError("Invalid dataset name")
 
 if args.function == 'pretrain':
-    pass
+    writer = SummaryWriter(log_dir='expt/')
+
+    train_config = trainer.TrainerConfig(max_epochs=args.max_epochs, 
+            learning_rate=args.learning_rate, lr_decay=args.lr_decay,
+            num_workers=4, writer=writer, ckpt_path='expt/params.pt')
+    if args.model_type == "base":
+        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0, batch_size=16, val_batch_size=1,
+        test_batch_size=1, num_workers=0)
+
+        model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+
+        if args.reading_params_path is not None:
+            model.load_state_dict(torch.load(args.reading_params_path), strict=False)
+
+        trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
+    elif args.model_type == "ets":
+        train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0, batch_size=16, val_batch_size=1,
+        test_batch_size=1, num_workers=0)
+    
+        model = ETSModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+
+        if args.reading_params_path is not None:
+            model.load_state_dict(torch.load(args.reading_params_path), strict=False)
+        
+        trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
+    trainer.train()
+    torch.save(model.state_dict(), args.writing_params_path)
+
 
 elif args.function == 'finetune':
     # TensorBoard training log
     writer = SummaryWriter(log_dir='expt/')
 
     train_config = trainer.TrainerConfig(max_epochs=args.max_epochs, 
-            learning_rate=args.learning_rate, 
+            learning_rate=args.learning_rate, lr_decay=args.lr_decay,
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
     # get the dataloaders. can make test and val sizes 0 if you don't want them
     if args.model_type == "base":
@@ -85,20 +127,31 @@ elif args.function == 'finetune':
         test_batch_size=1, num_workers=0)
     
         model = BaseModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+        if args.reading_params_path is not None:
+            model.load_state_dict(torch.load(args.reading_params_path), strict=False)
         trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
         with open(args.loss_path, 'w') as f:
             for loss in trainer.losses:
                 f.write(f"{loss[0]},{loss[1]}\n")
     
     elif args.model_type == "hierarchical":
-        train_dl1, val_dl1, test_dl1 = get_data_loaders(dataset1, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
-        test_batch_size=1, num_workers=0)
-        train_dl2, val_dl2, test_dl2 = get_data_loaders(dataset2, val_size=0, test_size=0.2, batch_size=16, val_batch_size=1,
-        test_batch_size=1, num_workers=0)
+        if args.dataset == "ELL-ICNALE":
+            train_dl1, val_dl1, test_dl1 = get_data_loaders(dataset1, val_size=0, test_size=0.2, batch_size=32, val_batch_size=1,
+            test_batch_size=1, num_workers=0)
+            train_dl2, val_dl2, test_dl2 = get_data_loaders(dataset2, val_size=0, test_size=0.2, batch_size=6, val_batch_size=1,
+            test_batch_size=1, num_workers=0)
 
-        model = HierarchicalModel(seq_length=dataset1.tokenizer.model_max_length, num_outputs=len(dataset1.targets.columns), pretrain_model_name=args.tokenizer_name)
+            model = HierarchicalModel(seq_length=dataset1.tokenizer.model_max_length, num_outputs=len(dataset1.targets.columns), pretrain_model_name=args.tokenizer_name)
+            
+            trainer = trainer.HierarchicalTrainer(model, train_dl1, train_dl2, test_dl1, test_dl2, train_config)
+        elif args.dataset == "ICNALE-EDITED":
+            train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0, batch_size=16, val_batch_size=1,
+            test_batch_size=1, num_workers=0)
         
-        trainer = trainer.HierarchicalTrainer(model, train_dl1, train_dl2, test_dl1, test_dl2, train_config)
+            model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=6, pretrain_model_name=args.tokenizer_name)
+            if args.reading_params_path is not None:
+                model.load_state_dict(torch.load(args.reading_params_path), strict=False)
+            trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
 
     trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)

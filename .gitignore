@@ -1,5 +1,6 @@
 # Additional ignore files
-.DS_Store
+*.DS_Store
+expt/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

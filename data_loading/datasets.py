@@ -38,6 +38,9 @@ class DefaultDataset(torch.utils.data.Dataset):
     def normalize_targets(self, normalize_score: float = 100.0) -> None:
         self.targets = (self.targets) / self.targets.max(axis=0) * normalize_score
 
+    def standardize_targets(self) -> None:
+        self.targets = (self.targets - self.targets.mean(axis=0)) / self.targets.std(axis=0)
+
     def __getitem__(self, index: Any) -> T_co:
         idx = self.indices[index]
         if self.tokenizer:

@@ -23,6 +23,26 @@ class BaseModel(torch.nn.Module):
             loss = nn.MSELoss()(output.float(), targets.float())
         return output, loss
 
+class ETSModel(torch.nn.Module):
+    def __init__(self, seq_length: int, num_outputs: int, pretrain_model_name: str):
+        super(ETSModel, self).__init__()
+        self.seq_length = seq_length
+        self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
+        self.l2 = torch.nn.Dropout(0.3)
+        self.final = torch.nn.Linear(self.seq_length*768, num_outputs)
+    
+    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
+        output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
+        # output_2 = self.l2(output_1['pooler_output'])
+        output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
+        output = self.final(output_2)
+        # if we are given some desired targets also calculate the loss
+        loss = None
+        if targets is not None:
+            loss = nn.MSELoss()(output.float(), targets.float())
+        return output, loss
+
+
 class HierarchicalModel(torch.nn.Module):
     def __init__(self, seq_length: int, num_outputs: int, pretrain_model_name: str):
         super(HierarchicalModel, self).__init__()
