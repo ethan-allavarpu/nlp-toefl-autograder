@@ -33,12 +33,12 @@ args = argp.parse_args()
 device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
 
 
-# instantiate the tokenizer
+# instantiate the tokenizers
 tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
 # instantiate the dataset
 if args.dataset == "SPEECHOCEAN":
-    dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'completeness', 'fluency', 'prosodic', 'total'],
-    target_cols_words = [], target_cols_phones = [], tokenizer=tokenizer)
+    dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'fluency', 'prosodic', 'total'],
+    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ["phones-accuracy"], tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
                              

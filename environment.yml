@@ -19,3 +19,5 @@ dependencies:
     - sentencepiece
     - sacrebleu
     - tensorboard
+    - datasets
+    - phonemizer

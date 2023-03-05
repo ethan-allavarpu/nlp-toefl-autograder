@@ -4,6 +4,7 @@ import pandas as pd
 # setting path
 import sys
 sys.path.append('../../')
+from espnet2.bin.tts_inference import Text2Speech
 
 
 audio_files = [
@@ -56,4 +57,10 @@ audio_files = [f for f in audio_files if f in scores["file_name"].values]
 ds = Dataset.from_dict(
     {**{"audio": scores["file_name"].values.tolist()}, **scores.to_dict("list")}
 ).cast_column("audio", Audio())
+
+model = Text2Speech.from_pretrained("espnet/kan-bayashi_ljspeech_vits")
+model.tts.fs = 16000
+correct_speech = [model(t.lower())['wav'] for t in ds['text']]
+self.data = ds.cast_column("audio", Audio(sampling_rate=16000))
+self.data = ds.add_column("correct_speech", [c.numpy for c in correct_speech])
 ds.push_to_hub("siegels/speechocean", token=os.environ.get("HUGGINGFACE_TOKEN"))
