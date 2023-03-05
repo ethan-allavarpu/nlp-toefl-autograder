@@ -57,7 +57,7 @@ class DefaultDataset(torch.utils.data.Dataset):
 class SpeechDataset(torch.utils.data.Dataset):
     def __init__(self, path_name: str, input_col: str, target_cols_sentence: Sequence[str], 
     target_cols_words: Sequence[str] = [], target_cols_phones: Sequence[str] = [],
-                 tokenizer: Any = None, tokenizer_params: Dict = None):
+                 tokenizer: Any = None, tokenizer_params: Dict = None, phoneme_seq_length: int = 30, word_seq_length: int = 10):
         self.data = load_dataset(path_name, split='train')
         self.tokenizer = tokenizer
 
@@ -66,10 +66,7 @@ class SpeechDataset(torch.utils.data.Dataset):
         self.inputs = tokenizer(
         [x[input_col]['array'] for x in self.data], ** tokenizer_params)
         self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
-        
-        # TODO: play with this later
-        
-
+    
         self.targets_sentence = pd.DataFrame([[x[t] for t in target_cols_sentence] for x in self.data ], columns=target_cols_sentence)
         if (len(target_cols_words) > 0) | (len(target_cols_phones) > 0):
             targets_words, targets_phones = self.compute_subtargets(target_cols_words, target_cols_phones)
@@ -84,6 +81,8 @@ class SpeechDataset(torch.utils.data.Dataset):
             self.targets_phones = None
         
         # normalize the targets
+        self.phoneme_seq_length = phoneme_seq_length
+        self.word_seq_length = word_seq_length
         self.normalize_targets()
     
     def compute_subtargets(self, target_cols_words: Sequence[str], target_cols_phones: Sequence[str]) -> Tuple[Sequence[str], Sequence[str]]:
@@ -140,11 +139,11 @@ class SpeechDataset(torch.utils.data.Dataset):
         words_output = None if self.targets_words is None else np.array(self.targets_words.loc[index].values.tolist())
         if words_output is not None:
             words_output = torch.Tensor(words_output)
-            words_output = pad(words_output, (0, 10-words_output.shape[1], 0, 0), value=-1)
+            words_output = pad(words_output, (0, self.word_seq_length-words_output.shape[1], 0, 0), value=-1)
         phones_output = None if self.targets_phones is None else np.array(self.targets_phones.loc[index].values.tolist())
         if phones_output is not None:
             phones_output = torch.Tensor(phones_output)
-            phones_output = pad(phones_output, (0, 30-phones_output.shape[1], 0, 0), value=-1)
+            phones_output = pad(phones_output, (0, self.phoneme_seq_length-phones_output.shape[1], 0, 0), value=-1)
         if (phones_output is None) and (words_output is None):
             return self.inputs[index], self.targets_sentence.loc[index].values
         return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output]

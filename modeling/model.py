@@ -68,15 +68,19 @@ class HierarchicalModel(torch.nn.Module):
         return output, loss
 
 class SpeechModel(torch.nn.Module):
-    def __init__(self, num_outputs: int, pretrain_model_name: str):
+    def __init__(self, num_outputs: int, pretrain_model_name: str, phoneme_seq_length: int, word_seq_length: int, word_outputs: int):
         super(SpeechModel, self).__init__()
         self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
         self.l2 = torch.nn.Dropout(0.3)
         self.l3 = torch.nn.Linear(49*768, num_outputs)
         self.phoneme_lstm = torch.nn.LSTM(49*768, 30, bidirectional=True, batch_first=True)
-        self.phoneme_fc = torch.nn.Linear(60, 30)
-        self.word_fc = torch.nn.Linear(60, 10*3)
-        self.output_fc = torch.nn.Linear(30*2, num_outputs)
+        # mult by 2 bc bidir
+        self.phoneme_fc = torch.nn.Linear(phoneme_seq_length*2, phoneme_seq_length)
+        self.word_fc = torch.nn.Linear(phoneme_seq_length*2, word_seq_length*word_outputs)
+        self.output_fc = torch.nn.Linear(phoneme_seq_length*2, num_outputs)
+        self.word_outputs = word_outputs
+        self.word_seq_length = word_seq_length
+        self.phoneme_seq_length = phoneme_seq_length
     
     def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         if type(targets) != list:
@@ -88,12 +92,12 @@ class SpeechModel(torch.nn.Module):
             output_2 = output_1['last_hidden_state'].reshape(-1, 49*768)
 
             phoneme_output, (hn, cn) = self.phoneme_lstm(output_2.unsqueeze(dim=1))
-            phoneme_fc = self.phoneme_fc(phoneme_output.squeeze(dim=1)).view(-1, 30)
+            phoneme_fc = self.phoneme_fc(phoneme_output.squeeze(dim=1)).view(-1, self.phoneme_seq_length)
 
        
-            word_fc = self.word_fc(phoneme_output).view(-1, 10 * 3)
+            word_fc = self.word_fc(phoneme_output).view(-1, self.word_outputs * self.word_seq_length)
             
-            output = self.output_fc(torch.permute(hn, (1, 0, 2)).reshape(-1, 30*2))
+            output = self.output_fc(torch.permute(hn, (1, 0, 2)).reshape(-1, self.phoneme_seq_length*2))
 
         # if we are given some desired targets also calculate the loss
         loss = None
@@ -113,7 +117,7 @@ class SpeechModel(torch.nn.Module):
                 phoneme_loss = nn.MSELoss(reduction='none')(phoneme_fc.float(), phoneme_targets)
                 phoneme_loss = phoneme_loss[phoneme_targets!=-1].sum()/phoneme_loss[phoneme_targets!=-1].shape[0]
                 
-        return output, (loss + word_loss + phoneme_loss)
+        return output, (loss + 0.5*word_loss + 0.5*phoneme_loss)
 
 
 class GranularSpeechModel(torch.nn.Module):

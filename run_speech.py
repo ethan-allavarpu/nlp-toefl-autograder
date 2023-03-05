@@ -57,7 +57,8 @@ elif args.function == 'finetune':
             learning_rate=args.learning_rate, 
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name)
+    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
     trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=val_dl)
     trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)
@@ -68,7 +69,8 @@ elif args.function == 'finetune':
 elif args.function == 'evaluate':
     train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=0.2, batch_size=16, val_batch_size=16,
         test_batch_size=1, num_workers=0)
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name)
+    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
 
     model.load_state_dict(torch.load(args.reading_params_path, map_location=torch.device('cpu')))
     model = model.to(device)
