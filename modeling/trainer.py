@@ -126,7 +126,7 @@ class Trainer:
                     config.writer.add_scalar('train/loss',  loss.item(), step)
                     config.writer.add_scalar('train/lr', lr, step)
                     
-            return loss.item()
+        return loss.item()
 
 class HierarchicalTrainer:
 
@@ -163,100 +163,87 @@ class HierarchicalTrainer:
         optimizer = optim.AdamW(optim_groups, lr=config.learning_rate, betas=config.betas)
         return optimizer
 
-    def train(self):
+    def train(self, split, step):
         model, config = self.model, self.config
+        is_train = split == 'train'
+        model.train(is_train)
+        loader1 = self.train_dataloader1 if is_train else self.test_dataloader1
+        loader2 = self.train_dataloader2 if is_train else self.test_dataloader2
 
-        step = 0
-        def run_epoch(split):
-            nonlocal step
-            is_train = split == 'train'
-            model.train(is_train)
-            loader1 = self.train_dataloader1 if is_train else self.test_dataloader1
-            loader2 = self.train_dataloader2 if is_train else self.test_dataloader2
+        losses = []
+        pbar1 = tqdm(enumerate(zip(loader1, loader2)), total=len([*enumerate(zip(loader1, loader2))])) if is_train else enumerate(zip(loader1, loader2))
+        
+        for it, ((x1, y1), (x2, y2)) in pbar1:
+            # place data on the correct device
+            x1 = x1.to(self.device)
+            if type(y1) == list:
+                y1 = [yy.to(self.device) for yy in y1]
+            else:
+                y1 = y1.to(torch.float32).to(self.device)
 
-            losses = []
-            pbar1 = tqdm(enumerate(zip(loader1, loader2)), total=len([*enumerate(zip(loader1, loader2))])) if is_train else enumerate(zip(loader1, loader2))
-            
-            for it, ((x1, y1), (x2, y2)) in pbar1:
-                # place data on the correct device
-                x1 = x1.to(self.device)
-                if type(y1) == list:
-                    y1 = [yy.to(self.device) for yy in y1]
+            # forward the model
+            with torch.set_grad_enabled(is_train):
+                logits, loss = model(x1, y1, one_output=False)
+                loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
+                losses.append(loss.item())
+
+            if is_train:
+                # backprop and update the parameters
+                model.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_norm_clip)
+                self.optimizer.step()
+
+                lr = config.learning_rate
+                # decay the learning rate based on our progress
+                if config.lr_decay:
+                    # TODO: Implement learning rate decay
+                    pass
                 else:
-                    y1 = y1.to(torch.float32).to(self.device)
-
-                # forward the model
-                with torch.set_grad_enabled(is_train):
-                    logits, loss = model(x1, y1, one_output=False)
-                    loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
-                    losses.append(loss.item())
-
-                if is_train:
-                    # backprop and update the parameters
-                    model.zero_grad()
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_norm_clip)
-                    self.optimizer.step()
-
                     lr = config.learning_rate
-                    # decay the learning rate based on our progress
-                    if config.lr_decay:
-                        # TODO: Implement learning rate decay
-                        pass
-                    else:
-                        lr = config.learning_rate
-                    # report progress
-                    pbar1.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
-                    
-                    if config.writer is not None:
-                        config.writer.add_scalar('train/loss',  loss.item(), step)
-                        config.writer.add_scalar('train/lr', lr, step)
-                    
-                step += 1
+                # report progress
+                pbar1.set_description(f"epoch {step+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
+                
+                if config.writer is not None:
+                    config.writer.add_scalar('train/loss',  loss.item(), step)
+                    config.writer.add_scalar('train/lr', lr, step)
+                
+            step += 1
 
-                # place data on the correct device
-                x2 = x2.to(self.device)
-                if type(y2) == list:
-                    y2 = [yy.to(self.device) for yy in y2]
+            # place data on the correct device
+            x2 = x2.to(self.device)
+            if type(y2) == list:
+                y2 = [yy.to(self.device) for yy in y2]
+            else:
+                y2 = y2.to(torch.float32).to(self.device)
+
+            # forward the model
+            with torch.set_grad_enabled(is_train):
+                logits, loss = model(x2, y2, one_output=True)
+                loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
+                losses.append(loss.item())
+
+            if is_train:
+                # backprop and update the parameters
+                model.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_norm_clip)
+                self.optimizer.step()
+
+                lr = config.learning_rate
+                # decay the learning rate based on our progress
+                if config.lr_decay:
+                    # TODO: Implement learning rate decay
+                    pass
                 else:
-                    y2 = y2.to(torch.float32).to(self.device)
-
-                # forward the model
-                with torch.set_grad_enabled(is_train):
-                    logits, loss = model(x2, y2, one_output=True)
-                    loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
-                    losses.append(loss.item())
-
-                if is_train:
-                    # backprop and update the parameters
-                    model.zero_grad()
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_norm_clip)
-                    self.optimizer.step()
-
                     lr = config.learning_rate
-                    # decay the learning rate based on our progress
-                    if config.lr_decay:
-                        # TODO: Implement learning rate decay
-                        pass
-                    else:
-                        lr = config.learning_rate
-                    # report progress
-                    pbar1.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
-                    
-                    if config.writer is not None:
-                        config.writer.add_scalar('train/loss',  loss.item(), step)
-                        config.writer.add_scalar('train/lr', lr, step)
-                    
-                step += 1
-            if not is_train:
-                logger.info("test loss: %f", np.mean(losses))
-
-        self.tokens = 0 # counter used for learning rate decay
-        for epoch in range(config.max_epochs):
-
-            run_epoch('train')
-            if self.test_dataloader1:
-                run_epoch('test')
-
-            self.save_checkpoint()
+                # report progress
+                pbar1.set_description(f"epoch {step+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
+                
+                if config.writer is not None:
+                    config.writer.add_scalar('train/loss',  loss.item(), step)
+                    config.writer.add_scalar('train/lr', lr, step)
+                
+            step += 1
+        if not is_train:
+            logger.info("test loss: %f", np.mean(losses))
