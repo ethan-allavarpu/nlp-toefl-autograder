@@ -10,7 +10,7 @@ import random
 import argparse
 
 from modeling import trainer
-from data_loading.datasets import DefaultDataset
+from data_loading.datasets import DefaultDataset, CombinedDataset
 from data_loading.dataloaders import get_data_loaders
 from settings import *
 
@@ -63,10 +63,10 @@ if args.model_type in ["base", "ets"]:
         raise ValueError("Invalid dataset name")
 elif args.model_type == "hierarchical":
     if args.dataset == "ELL-ICNALE":
-        dataset1 = DefaultDataset(file_path=ELL_DATA_DIR, input_col='full_text', target_cols=['cohesion', 'syntax',  'vocabulary',  'phraseology',  'grammar',  'conventions'], index_col='text_id', 
-                                tokenizer=tokenizer)
-        dataset2 = DefaultDataset(file_path=ICNALE_EDITED_DATA_DIR, input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
-                                    tokenizer=tokenizer)
+        dataset = CombinedDataset(
+            file_path1=ELL_DATA_DIR, file_path2=ICNALE_EDITED_DATA_DIR, input_col1="full_text", input_col2="essay",
+            target_cols1=['cohesion', 'syntax',  'vocabulary',  'phraseology',  'grammar',  'conventions'],
+            target_cols2=['Total 1 (%)'], tokenizer=tokenizer)
     elif args.dataset == "FCE":
         dataset = DefaultDataset(file_path=FCE_DATA_DIR, input_col='essay', target_cols=['overall_score'], 
                                 tokenizer=tokenizer)
@@ -136,14 +136,14 @@ elif args.function == 'finetune':
     
     elif args.model_type == "hierarchical":
         if args.dataset == "ELL-ICNALE":
-            train_dl1, val_dl1, test_dl1 = get_data_loaders(dataset1, val_size=0, test_size=0.2, batch_size=32, val_batch_size=1,
-            test_batch_size=1, num_workers=0)
-            train_dl2, val_dl2, test_dl2 = get_data_loaders(dataset2, val_size=0, test_size=0.2, batch_size=6, val_batch_size=1,
-            test_batch_size=1, num_workers=0)
+            train_dl, val_dl, test_dl = get_data_loaders(
+                dataset, val_size=0, test_size=0.2, batch_size=32, val_batch_size=1, test_batch_size=1, num_workers=0
+            )
 
-            model = HierarchicalModel(seq_length=dataset1.tokenizer.model_max_length, num_outputs=len(dataset1.targets.columns), pretrain_model_name=args.tokenizer_name)
+            model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns) - 1, pretrain_model_name=args.tokenizer_name)
+
+            trainer = trainer.HierarchicalTrainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
             
-            trainer = trainer.HierarchicalTrainer(model, train_dl1, train_dl2, test_dl1, test_dl2, train_config)
         elif args.dataset == "ICNALE-EDITED":
             train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0, batch_size=16, val_batch_size=1,
             test_batch_size=1, num_workers=0)
@@ -151,6 +151,7 @@ elif args.function == 'finetune':
             model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=6, pretrain_model_name=args.tokenizer_name)
             if args.reading_params_path is not None:
                 model.load_state_dict(torch.load(args.reading_params_path), strict=False)
+
             trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
 
     trainer.train()
