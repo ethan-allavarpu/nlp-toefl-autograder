@@ -25,7 +25,7 @@ argp.add_argument('--outputs_path', type=str, help='Path to the output predictio
 argp.add_argument('--loss_path', type=str, help='Path to the output losses', default="losses.txt", required=False)
 argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to use', default="facebook/wav2vec2-base", required=False)
 argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="SPEECHOCEAN", required=False)
-argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=1, required=False)
+argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=25, required=False)
 argp.add_argument('--learning_rate', type=float, help='Learning rate', default=2e-5, required=False)
 args = argp.parse_args()
 
@@ -38,7 +38,7 @@ tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
 # instantiate the dataset
 if args.dataset == "SPEECHOCEAN":
     dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'fluency', 'prosodic', 'total'],
-    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ["phones-accuracy"], tokenizer=tokenizer)
+    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ['phones-accuracy'], tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
                              
@@ -58,7 +58,7 @@ elif args.function == 'finetune':
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
     model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
-    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
+    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
     trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=val_dl)
     trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)
@@ -67,7 +67,7 @@ elif args.function == 'finetune':
             f.write(f"{loss[0]},{loss[1]}\n")
 
 elif args.function == 'evaluate':
-    train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0, test_size=0.2, batch_size=16, val_batch_size=16,
+    train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.1, test_size=0.1, batch_size=16, val_batch_size=16,
         test_batch_size=1, num_workers=0)
     model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
@@ -78,12 +78,16 @@ elif args.function == 'evaluate':
     predictions = []
 
     pbar = tqdm(enumerate(test_dl), total=len(test_dl)) 
+    # pred_cols = [f'pred_{c}' for c in dataset.targets_sentence.columns] + [f'pred_word_{c}' for c in dataset.targets_words.columns] + [f'pred_{c}' for c in dataset.targets_phones.columns]
     pred_cols = [f'pred_{c}' for c in dataset.targets_sentence.columns]
     actual_cols = [f'actual_{c}' for c in dataset.targets_sentence.columns]
     for it, (x, y) in pbar:
         # place data on the correct device
         x = x.to(device)
-        predictions.append(({**dict(zip(pred_cols, model(x)[0][0].tolist())), **dict(zip(actual_cols, y[0].tolist()))}))
+        one_output = (type(y) != list)
+        #flattened_preds = [item for sublist in [predictions[0].tolist() for predictions in model(x, one_output=one_output)[0]] for item in sublist]
+        #flattened_actuals = [item for sublist in y.tolist() for item in sublist]
+        predictions.append(({**dict(zip(pred_cols, model(x, one_output=one_output)[0][0][0].tolist())), **dict(zip(actual_cols, y[0][0].tolist()))}))
         torch.cuda.empty_cache()
 
     pd.DataFrame(predictions).to_csv(args.outputs_path, index=False)
