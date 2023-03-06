@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,24 +21,34 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 
 torch.manual_seed(0)
-
+global_args = None
 
 class Namespace:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
+def load_data(data_dir, tokenizer):
+    dataset = DefaultDataset(file_path="/home/ubuntu/nlp-toefl-autograder/data/icnale-data-edited.csv", input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
+                                        tokenizer=tokenizer)
+    return dataset
 
-def train_finetune(tune_config, args):
+def train_finetune(tune_config, data_dir=None):
+    #max_pending_trials = os.getenv("TUNE_MAX_PENDING_TRIALS_PG", 1)
+    args = global_args  
+    checkpoint_dir = '/home/ubuntu/nlp-toefl-autograder/tuning_ckpt'
+
     tokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer_name, trust_remote_code=True
     )
-    dataset = utils.get_dataset(args, tokenizer)
+
+    dataset = load_data(data_dir, tokenizer)
+    from modeling import trainer
     train_config = trainer.TrainerConfig(
         max_epochs=tune_config["max_epochs"],
         learning_rate=tune_config["lr"],
         lr_decay=tune_config["lr_decay"],
         num_workers=4,
-        ckpt_path="tuning/params.pt",
+        ckpt_path="/home/ubuntu/nlp-toefl-autograder/tuning_ckpt/params.pt",
     )
     train_dl, val_dl, _ = get_data_loaders(
         dataset,
@@ -60,16 +71,31 @@ def train_finetune(tune_config, args):
         model=model,
         train_dataloader=train_dl,
         val_dataloader=val_dl,
-        config=train_config,
-        val_dataloader=None,
+        config=train_config
     )
 
-    trainer.train()
+    trainer.tokens = 0 # counter used for learning rate decay
+    for epoch in range(tune_config["max_epochs"]):
+        train_loss = trainer.train('train', epoch)
+        if trainer.val_dataloader:
+            val_loss = trainer.train('val', epoch)
+        else:
+            val_loss = None
+        trainer.losses.append((train_loss, val_loss))
+        trainer.save_checkpoint()
+        
+        with tune.checkpoint_dir(epoch) as checkpoint_dir:
+            path = os.path.join(checkpoint_dir, "checkpoint")
+            torch.save((model.state_dict(), trainer.optimizer.state_dict()), path)
 
-
+            tune.report(loss=(val_loss))
+            
+        print("Finished Training")
 
 
 def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
+    os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = "1"
+    os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1" 
 
     # Parameters to tune
     tune_config = {
@@ -93,12 +119,12 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
     )
 
     result = tune.run(
-        partial(train_finetune, data_dir=data_dir),
-        resources_per_trial={"cpu": 2, "gpu": gpus_per_trial},
+        partial(train_finetune, data_dir="./data"),
+        resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
         config=tune_config,
         num_samples=num_samples,
         scheduler=scheduler,
-        progress_reporter=reporter,
+        progress_reporter=reporter
     )
 
     best_trial = result.get_best_trial("loss", "min", "last")
@@ -121,7 +147,7 @@ if __name__ == "__main__":
     sys.stdout.fileno = lambda: False
     # sphinx_gallery_end_ignore
     # You can change the number of GPUs per trial here:
-    args = Namespace(
+    finetune_args = Namespace(
         ICNALE_output="overall",
         dataset="ICNALE-EDITED",
         function="finetune",
@@ -135,4 +161,5 @@ if __name__ == "__main__":
         tokenizer_name="distilbert-base-uncased",
         writing_params_path="icnale-baseline.params",
     )
-    main(num_samples=10, max_num_epochs=10, gpus_per_trial=0)
+    global_args = finetune_args
+    main(num_samples=10, max_num_epochs=20, gpus_per_trial=1)

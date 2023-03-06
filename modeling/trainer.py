@@ -7,6 +7,9 @@ import math
 import logging
 
 from tqdm import tqdm
+from functools import partialmethod
+
+#tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 import numpy as np
 
 import torch
@@ -82,7 +85,7 @@ class Trainer:
         loader = self.train_dataloader if is_train else self.val_dataloader
 
         pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
-        
+        losses = []
         for it, (x, y) in pbar:
             # place data on the correct device
             x = x.to(self.device)
@@ -95,7 +98,7 @@ class Trainer:
             with torch.set_grad_enabled(is_train):
                 logits, loss = model(x, y)
                 loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
-                
+                losses.append(loss.item())
             if is_train:
                 # backprop and update the parameters
                 model.zero_grad()
@@ -126,4 +129,4 @@ class Trainer:
                     config.writer.add_scalar('train/loss',  loss.item(), step)
                     config.writer.add_scalar('train/lr', lr, step)
                     
-        return loss.item()
+        return np.mean(losses)
