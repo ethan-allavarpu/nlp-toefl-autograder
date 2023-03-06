@@ -102,7 +102,7 @@ elif args.function == 'finetune':
 
     trainer.tokens = 0 # counter used for learning rate decay
     if args.model_type == "base":
-        for epoch in range(10):
+        for epoch in range(args.max_epochs):
             train_loss = trainer.train('train', epoch)
             if trainer.val_dataloader:
                 val_loss = trainer.train('val', epoch)
