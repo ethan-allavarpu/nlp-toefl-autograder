@@ -135,7 +135,7 @@ elif args.function == 'evaluate':
     for it, (x, y) in pbar:
         # place data on the correct device
         x = x.to(device)
-        predictions.append((model(x)[0].mean().item(), y[0].mean().item()))
+        predictions.append((model(x, eval_output=True)[0].mean().item(), y[0].mean().item()))
         torch.cuda.empty_cache()
 
     utils.write_predictions(args.outputs_path, predictions)

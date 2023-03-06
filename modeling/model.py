@@ -15,7 +15,7 @@ class BaseModel(torch.nn.Module):
         self.l5 = torch.nn.Linear(self.seq_length, num_outputs)
 
         
-    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
+    def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
@@ -36,7 +36,7 @@ class ETSModel(torch.nn.Module):
         self.l2 = torch.nn.Dropout(0.3)
         self.final = torch.nn.Linear(self.seq_length*768, num_outputs)
     
-    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
+    def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
@@ -57,13 +57,14 @@ class HierarchicalModel(torch.nn.Module):
         self.l3 = torch.nn.Linear(self.seq_length*768, num_outputs)
         self.l4 = torch.nn.Linear(num_outputs, 1)
     
-    def forward(self, data: Any, targets: Any = None, one_output: bool=True):
+    def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
         x1 = self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         x2 = self.l2(x1['last_hidden_state'].reshape(-1, self.seq_length*768))
         multi_out = self.l3(x2)
         single_out = self.l4(multi_out)
         output = torch.cat([multi_out, single_out], dim=1)
-
+        if eval_output:
+            output = single_out
         loss = None
         if targets is not None:
             loss = nn.MSELoss()(
