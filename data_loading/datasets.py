@@ -53,6 +53,76 @@ class DefaultDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
+class CombinedDataset(torch.utils.data.Dataset):
+    def __init__(self, file_path1: str, file_path2: str,
+                 input_col1: str, input_col2: str,
+                 target_cols1: Sequence[str], target_cols2: Sequence[str], index_col1: str = None, index_col2: str = None,
+                 tokenizer: Any = None, tokenizer_params: Dict = None):
+        self.data1 = pd.read_csv(file_path1)
+        self.data2 = pd.read_csv(file_path2)
+        # set index col so we can use it as a key
+        if index_col1:
+            self.data1.set_index(index_col1, inplace=True)
+        # set index col so we can use it as a key
+        if index_col2:
+            self.data2.set_index(index_col2, inplace=True)
+
+        indices1 = self.data1.index.tolist()
+        indices2 = self.data2.index.tolist()
+        self.indices = indices1 + indices2
+        target_cols = target_cols1 + target_cols2
+
+        inputs1 = pd.DataFrame(self.data1[input_col1])
+        inputs2 = pd.DataFrame(self.data2[input_col2])
+        inputs2.columns = inputs1.columns
+        self.inputs = pd.concat([inputs1, inputs2])
+        self.inputs.index = self.indices
+        # Can switch between normalizing and standardizing
+        targets1 = self.standardize_targets(
+            pd.DataFrame(self.data1[target_cols1])
+        )
+        for i in range(len(target_cols2)):
+            targets1 = pd.concat([
+                targets1, pd.Series([-1000 for j in range(len(targets1))])
+            ], axis=1)
+        targets2 = self.standardize_targets(
+            pd.DataFrame(self.data2[target_cols2])
+        )
+        targets1.columns = target_cols
+        for i in range(len(target_cols1)):
+            targets2 = pd.concat([
+                pd.Series([-1000 for j in range(len(targets2))]), targets2
+            ], axis=1)
+        targets2.columns = target_cols
+        self.targets = pd.concat([targets1, targets2])
+        self.targets.index = self.indices
+        self.data = pd.concat([self.inputs, self.targets], axis=1)
+        self.data.index = self.indices
+        # here we can provide the tokenizer!
+        self.tokenizer = tokenizer
+        # default tokenizer params
+        self.tokenizer_params = tokenizer_params if tokenizer_params else {'padding': 
+        'max_length', 
+         'max_length': 512,
+        # 'max_length': max([len(t) for t in self.tokenizer(self.inputs['full_text'].to_list())['input_ids']]),
+         'truncation': True, 'return_tensors': 'pt'} 
+    
+    def normalize_targets(self, targs, normalize_score: float = 100.0):
+        return (targs) / targs.max(axis=0) * normalize_score
+
+    def standardize_targets(self, targs) -> None:
+        return (targs - targs.mean(axis=0)) / targs.std(axis=0)
+
+    def __getitem__(self, index: Any) -> T_co:
+        if self.tokenizer:
+            features = self.tokenizer(self.inputs.iloc[index].item(), **self.tokenizer_params)
+        else:
+            # input is already tokenized
+            features = self.inputs.iloc[index].values
+        return features, self.targets.iloc[index].values
+
+    def __len__(self) -> int:
+        return len(self.data)
 
 class SpeechDataset(torch.utils.data.Dataset):
     def __init__(self, path_name: str, input_col: str, target_cols_sentence: Sequence[str], 
