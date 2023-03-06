@@ -10,3 +10,5 @@ python run.py evaluate --dataset FCE  \
         --reading_params_path hierarchical-model-1.params  \
         --outputs_path hierarchical-model-1.fce.predictions \
         --model_type hierarchical
+
+python src/evaluation.py hierarchical-model-1.fce.predictions data/fce-data-input-format.csv written
