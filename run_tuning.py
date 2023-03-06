@@ -109,13 +109,13 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
         metric="loss",
         mode="min",
         max_t=max_num_epochs,
-        grace_period=1,
+        grace_period=5,
         reduction_factor=2,
     )
 
     reporter = CLIReporter(
         # parameter_columns=["lr", "lr_decay", "max_epochs"],
-        metric_columns=["loss", "accuracy", "training_iteration"]
+        metric_columns=["loss", "training_iteration"]
     )
 
     result = tune.run(
@@ -130,11 +130,6 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
     best_trial = result.get_best_trial("loss", "min", "last")
     print("Best trial config: {}".format(best_trial.config))
     print("Best trial final validation loss: {}".format(best_trial.last_result["loss"]))
-    print(
-        "Best trial final validation accuracy: {}".format(
-            best_trial.last_result["accuracy"]
-        )
-    )
 
 
 
@@ -162,4 +157,4 @@ if __name__ == "__main__":
         writing_params_path="icnale-baseline.params",
     )
     global_args = finetune_args
-    main(num_samples=10, max_num_epochs=20, gpus_per_trial=1)
+    main(num_samples=15, max_num_epochs=20, gpus_per_trial=1)
