@@ -3,7 +3,8 @@
 # Finetune the model
 python run.py finetune --dataset ELL-ICNALE \
         --writing_params_path hierarchical-model-1.params \
-        --model_type hierarchical
+        --model_type hierarchical \
+        --max_epochs 10
 
 # Evaluate on the dev set; write to disk
 python run.py evaluate --dataset FCE  \
