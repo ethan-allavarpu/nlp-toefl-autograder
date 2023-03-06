@@ -9,7 +9,6 @@ from transformers import AutoTokenizer
 import random
 
 from modeling import trainer
-from data_loading.datasets import DefaultDataset, CombinedDataset
 from data_loading.dataloaders import get_data_loaders
 import run_utils as utils
 
@@ -52,7 +51,17 @@ if args.function == 'pretrain':
             model.load_state_dict(torch.load(args.reading_params_path), strict=False)
         
         trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
-    trainer.train()
+
+    trainer.tokens = 0 # counter used for learning rate decay
+    for epoch in range(args.max_epochs):
+        train_loss = trainer.train('train', epoch)
+        if trainer.val_dataloader:
+            val_loss = trainer.train('val', epoch)
+        else:
+            val_loss = None
+        trainer.losses.append((train_loss, val_loss))
+        trainer.save_checkpoint()
+    
     torch.save(model.state_dict(), args.writing_params_path)
 
 
@@ -72,9 +81,6 @@ elif args.function == 'finetune':
         if args.reading_params_path is not None:
             model.load_state_dict(torch.load(args.reading_params_path), strict=False)
         trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
-        with open(args.loss_path, 'w') as f:
-            for loss in trainer.losses:
-                f.write(f"{loss[0]},{loss[1]}\n")
     
     elif args.model_type == "hierarchical":
         if args.dataset == "ELL-ICNALE":
@@ -94,7 +100,23 @@ elif args.function == 'finetune':
 
         trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
 
-    trainer.train()
+    trainer.tokens = 0 # counter used for learning rate decay
+    if args.model_type == "base":
+        for epoch in range(args.max_epochs):
+            train_loss = trainer.train('train', epoch)
+            if trainer.val_dataloader:
+                val_loss = trainer.train('val', epoch)
+            else:
+                val_loss = None
+            trainer.losses.append((train_loss, val_loss))
+            trainer.save_checkpoint()
+    else: # hierarchical
+        for epoch in range(args.max_epochs):
+            train_loss = trainer.train('train', epoch)
+            if trainer.test_dataloader1:
+                val_loss = trainer.train('test', epoch)
+            trainer.save_checkpoint()
+    
     torch.save(model.state_dict(), args.writing_params_path)
 
 elif args.function == 'evaluate':
