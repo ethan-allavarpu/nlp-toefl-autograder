@@ -83,8 +83,6 @@ elif args.function == 'finetune':
             )
 
             model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns) - 1, pretrain_model_name=args.tokenizer_name)
-
-            trainer = trainer.HierarchicalTrainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
             
         elif args.dataset == "ICNALE-EDITED":
             train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.2, test_size=0, batch_size=16, val_batch_size=1,
@@ -94,7 +92,7 @@ elif args.function == 'finetune':
             if args.reading_params_path is not None:
                 model.load_state_dict(torch.load(args.reading_params_path), strict=False)
 
-            trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
+        trainer = trainer.Trainer(model=model, train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=None)
 
     trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)

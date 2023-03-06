@@ -62,14 +62,13 @@ class HierarchicalModel(torch.nn.Module):
         x2 = self.l2(x1['last_hidden_state'].reshape(-1, self.seq_length*768))
         multi_out = self.l3(x2)
         single_out = self.l4(multi_out)
-        if one_output:
-            output = single_out
-        else:
-            output = multi_out
+        output = torch.cat([multi_out, single_out], dim=1)
 
         loss = None
         if targets is not None:
-            loss = nn.MSELoss()(output.float(), targets.float())
+            loss = nn.MSELoss()(
+                output[targets > -999].float(), targets[targets > -999].float()
+            )
         return output, loss
 
 class SpeechModel(torch.nn.Module):
