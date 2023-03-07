@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import torch
@@ -27,28 +28,24 @@ class Namespace:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
-def load_data(data_dir, tokenizer):
-    dataset = DefaultDataset(file_path="/home/ubuntu/nlp-toefl-autograder/data/icnale-data-edited.csv", input_col='essay', target_cols=['Total 1 (%)'], index_col=None, 
-                                        tokenizer=tokenizer)
+def load_data(tokenizer):
+    dataset = utils.get_dataset(global_args, tokenizer)
     return dataset
 
-def train_finetune(tune_config, data_dir=None):
-    #max_pending_trials = os.getenv("TUNE_MAX_PENDING_TRIALS_PG", 1)
+def train_finetune(tune_config, filename='best-params'):
     args = global_args  
-    checkpoint_dir = '/home/ubuntu/nlp-toefl-autograder/tuning_ckpt'
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.tokenizer_name, trust_remote_code=True
     )
 
-    dataset = load_data(data_dir, tokenizer)
+    dataset = load_data(tokenizer)
     from modeling import trainer
     train_config = trainer.TrainerConfig(
         max_epochs=tune_config["max_epochs"],
         learning_rate=tune_config["lr"],
         lr_decay=tune_config["lr_decay"],
         num_workers=4,
-        ckpt_path="/home/ubuntu/nlp-toefl-autograder/tuning_ckpt/params.pt",
     )
     train_dl, val_dl, _ = get_data_loaders(
         dataset,
@@ -75,25 +72,27 @@ def train_finetune(tune_config, data_dir=None):
     )
 
     trainer.tokens = 0 # counter used for learning rate decay
+    model_min_loss = float('inf')
     for epoch in range(tune_config["max_epochs"]):
         train_loss = trainer.train('train', epoch)
         if trainer.val_dataloader:
             val_loss = trainer.train('val', epoch)
         else:
             val_loss = None
-        trainer.losses.append((train_loss, val_loss))
-        trainer.save_checkpoint()
         
-        with tune.checkpoint_dir(epoch) as checkpoint_dir:
-            path = os.path.join(checkpoint_dir, "checkpoint")
-            torch.save((model.state_dict(), trainer.optimizer.state_dict()), path)
+        if (val_loss < model_min_loss):
+            model_min_loss = val_loss
+            torch.save(model.state_dict(), "/home/ubuntu/nlp-toefl-autograder/tuning/"+filename)
+            with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+filename+".txt", 'w') as convert_file:
+                convert_file.write(json.dumps(tune_config))
 
-            tune.report(loss=(val_loss))
-            
-        print("Finished Training")
+        trainer.losses.append((train_loss, val_loss))
+        tune.report(loss=(val_loss))
+        
+    print("Finished Training")
 
 
-def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
+def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None):
     os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = "1"
     os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1" 
 
@@ -109,17 +108,16 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
         metric="loss",
         mode="min",
         max_t=max_num_epochs,
-        grace_period=5,
+        grace_period=10,
         reduction_factor=2,
     )
 
     reporter = CLIReporter(
-        # parameter_columns=["lr", "lr_decay", "max_epochs"],
         metric_columns=["loss", "training_iteration"]
     )
 
     result = tune.run(
-        partial(train_finetune, data_dir="./data"),
+        partial(train_finetune, filename=filename),
         resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
         config=tune_config,
         num_samples=num_samples,
@@ -134,15 +132,11 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2):
 
 
 if __name__ == "__main__":
-    # sphinx_gallery_start_ignore
-    # Fixes AttributeError: '_LoggingTee' object has no attribute 'fileno'.
-    # This is only needed to run with sphinx-build.
     import sys
-
     sys.stdout.fileno = lambda: False
-    # sphinx_gallery_end_ignore
-    # You can change the number of GPUs per trial here:
-    finetune_args = Namespace(
+
+    # Make args for tuning and set global equal to those args.
+    baseline_args = Namespace(
         ICNALE_output="overall",
         dataset="ICNALE-EDITED",
         function="finetune",
@@ -156,5 +150,8 @@ if __name__ == "__main__":
         tokenizer_name="distilbert-base-uncased",
         writing_params_path="icnale-baseline.params",
     )
-    global_args = finetune_args
-    main(num_samples=15, max_num_epochs=20, gpus_per_trial=1)
+    global_args = baseline_args # change this
+    params_output_name = "baseline-best-model.params" # change this
+
+    # Before running go to trainer.py and uncomment line#12
+    main(num_samples=15, max_num_epochs=25, gpus_per_trial=1, filename=params_output_name)
