@@ -131,11 +131,16 @@ class SpeechDataset(torch.utils.data.Dataset):
         self.data = load_dataset(path_name, split='train')
         self.tokenizer = tokenizer
 
-        tokenizer_params = tokenizer_params if tokenizer_params else {'sampling_rate':tokenizer.sampling_rate, 'max_length': tokenizer.sampling_rate, 
+        tokenizer_params = tokenizer_params if tokenizer_params else {'sampling_rate':tokenizer.sampling_rate, 
+        'padding': 'max_length', 'max_length': 100000, 
         'truncation': True}
         self.inputs = tokenizer(
         [x[input_col]['array'] for x in self.data], ** tokenizer_params)
         self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
+
+        # 22050 for correct speech
+        self.correct_speech = tokenizer(self.data['correct_speech'],  ** tokenizer_params)['input_values']
+        
     
         self.targets_sentence = pd.DataFrame([[x[t] for t in target_cols_sentence] for x in self.data ], columns=target_cols_sentence)
         if (len(target_cols_words) > 0) | (len(target_cols_phones) > 0):

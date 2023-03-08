@@ -9,7 +9,7 @@ import logging
 from tqdm import tqdm
 from functools import partialmethod
 
-#tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 import numpy as np
 
 import torch

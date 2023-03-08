@@ -60,7 +60,7 @@ elif args.function == 'finetune':
     model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
     trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=val_dl)
-    trainer.train()
+    trainer.train(split='train', step=0)
     torch.save(model.state_dict(), args.writing_params_path)
     with open(args.loss_path, 'w') as f:
         for loss in trainer.losses:

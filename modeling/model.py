@@ -77,14 +77,14 @@ class SpeechModel(torch.nn.Module):
         super(SpeechModel, self).__init__()
         self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
         self.l2 = torch.nn.Dropout(0.3)
-        self.l3 = torch.nn.Linear(49*768, num_outputs)
-        self.l4 = torch.nn.Linear(49*768, word_outputs*word_seq_length)
-        self.l5 = torch.nn.Linear(49*768, phoneme_seq_length)
+        self.l3 = torch.nn.Linear(312*768, num_outputs)
+        self.l4 = torch.nn.Linear(312*768, word_outputs*word_seq_length)
+        self.l5 = torch.nn.Linear(312*768, phoneme_seq_length)
         self.phoneme_lstm = torch.nn.LSTM(768, phoneme_seq_length, bidirectional=True, batch_first=True)
         # mult by 2 bc bidir
-        self.phoneme_fc = torch.nn.Linear(phoneme_seq_length*2*49, phoneme_seq_length)
-        self.word_fc = torch.nn.Linear(phoneme_seq_length*2*49, word_seq_length*word_outputs)
-        self.output_fc = torch.nn.Linear(phoneme_seq_length*2*49, num_outputs)
+        self.phoneme_fc = torch.nn.Linear(phoneme_seq_length*2*312, phoneme_seq_length)
+        self.word_fc = torch.nn.Linear(phoneme_seq_length*2*312, word_seq_length*word_outputs)
+        self.output_fc = torch.nn.Linear(phoneme_seq_length*2*312, num_outputs)
         self.word_outputs = word_outputs
         self.word_seq_length = word_seq_length
         self.phoneme_seq_length = phoneme_seq_length
@@ -92,20 +92,20 @@ class SpeechModel(torch.nn.Module):
     def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         if (type(targets) != list) & (one_output):
             output_1= self.l1(data)
-            output_2 = output_1['last_hidden_state'].reshape(-1, 49*768)
+            output_2 = output_1['last_hidden_state'].reshape(-1, 312*768)
             output = self.l3(output_2)
             word_output, phoneme_output = (0,0)
         else:
             output_1= self.l1(data)
-            output_2 = output_1['last_hidden_state'].reshape(-1, 49*768)
+            output_2 = output_1['last_hidden_state'].reshape(-1, 312*768)
 
             phoneme_output, (hn, cn) = self.phoneme_lstm(output_1['last_hidden_state'])
-            phoneme_fc = self.phoneme_fc(phoneme_output.reshape(-1, self.phoneme_seq_length*2*49))
+            phoneme_fc = self.phoneme_fc(phoneme_output.reshape(-1, self.phoneme_seq_length*2*312))
 
        
-            word_fc = self.word_fc(phoneme_output.reshape(-1, self.phoneme_seq_length*2*49)).view(-1, self.word_outputs * self.word_seq_length)
+            word_fc = self.word_fc(phoneme_output.reshape(-1, self.phoneme_seq_length*2*312)).view(-1, self.word_outputs * self.word_seq_length)
             
-            output = self.output_fc(phoneme_output.reshape(-1, self.phoneme_seq_length*2*49))
+            output = self.output_fc(phoneme_output.reshape(-1, self.phoneme_seq_length*2*312))
             # output = self.l3(output_2)
             # word_fc = self.l4(output_2* self.word_seq_length)
             # phoneme_fc = self.l5(output_2)
@@ -136,12 +136,12 @@ class GranularSpeechModel(torch.nn.Module):
         super(SpeechModel, self).__init__()
         self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
         self.l2 = torch.nn.Dropout(0.3)
-        self.l3 = torch.nn.Linear(49*768, num_outputs)
+        self.l3 = torch.nn.Linear(312*768, num_outputs)
     
     def forward(self, data: Any, targets: Any = None, one_output: bool = True):
         output_1= self.l1(data)
         # output_2 = self.l2(output_1['pooler_output'])
-        output_2 = output_1['last_hidden_state'].reshape(-1, 49*768)
+        output_2 = output_1['last_hidden_state'].reshape(-1, 312*768)
         output = self.l3(output_2)
         # if we are given some desired targets also calculate the loss
         loss = None
