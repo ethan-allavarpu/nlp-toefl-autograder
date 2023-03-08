@@ -5,14 +5,14 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn import functional as F
-from modeling.model import BaseModel, ETSModel, HierarchicalModel
+from modeling.model import BaseModel, ETSModel, HierarchicalModel, SpeechModel
 from torch.utils.tensorboard import SummaryWriter
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoFeatureExtractor
 import random
 import argparse
 
 from modeling import trainer
-from data_loading.datasets import DefaultDataset
+from data_loading.datasets import DefaultDataset, SpeechDataset
 from data_loading.dataloaders import get_data_loaders
 from settings import *
 import run_utils as utils
@@ -98,9 +98,7 @@ def train_finetune(tune_config, filename='best-params'):
 def train_speech(tune_config, filename='best-params'):
     args = global_args  
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.tokenizer_name, trust_remote_code=True
-    )
+    tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
 
     dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'fluency', 'prosodic', 'total'],
     target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ['phones-accuracy'], tokenizer=tokenizer)
@@ -185,9 +183,6 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, spe
     reporter = CLIReporter(
         metric_columns=["loss", "training_iteration"]
     )
-    print(speech)
-    import sys
-    sys.exit(0)
     if speech:
         result = tune.run(
         partial(train_speech, filename=filename),
@@ -215,7 +210,7 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, spe
 
 if __name__ == "__main__":
     argp = argparse.ArgumentParser()
-    argp.add_argument('--speech', type=bool, help='Should we run speech model', action='store_true')
+    argp.add_argument('--speech', help='Should we run speech model', action='store_true')
     clargs = argp.parse_args()
 
     import sys
@@ -239,11 +234,12 @@ if __name__ == "__main__":
     speech_args = Namespace(
         tokenizer_name = "facebook/wav2vec2-base",
         dataset = "SPEECHOCEAN",
-        model_type = "speech"
+        model_type = "speech",
+        reading_params_path=None
     )
 
     global_args = speech_args if clargs.speech else baseline_args # change this
     params_output_name = "speech-best-model.params" if clargs.speech else "baseline-best-model.params" # change this
 
     # Before running go to trainer.py and uncomment line#12
-    main(num_samples=15, max_num_epochs=25, gpus_per_trial=1, filename=params_output_name, speeech=clargs.speech)
+    main(num_samples=15, max_num_epochs=25, gpus_per_trial=1, filename=params_output_name, speech=clargs.speech)

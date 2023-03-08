@@ -21,3 +21,5 @@ dependencies:
     - tensorboard
     - datasets
     - phonemizer
+    - librosa
+    - soundfile
