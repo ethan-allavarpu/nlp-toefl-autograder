@@ -76,7 +76,7 @@ correct_speech = [model(t.lower())['wav'] for t in ds['text']]
 ds = ds.cast_column("audio", Audio(sampling_rate=16000))
 ds = ds.add_column("correct_speech", [c.numpy() for c in correct_speech])
 ds.push_to_hub("siegels/speechocean", token=os.environ.get("HUGGINGFACE_TOKEN"))
-ds.delete_column("correct_speech")
+ds = ds.remove_columns("correct_speech")
 
 
 from espnet2.bin.tts_inference import Text2Speech
