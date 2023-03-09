@@ -127,7 +127,7 @@ class SpeechModel(torch.nn.Module):
                 phoneme_targets = targets[2].float().reshape(-1, 30*1)
                 phoneme_loss = nn.MSELoss(reduction='none')(phoneme_fc.float(), phoneme_targets)
                 phoneme_loss = phoneme_loss[phoneme_targets!=-1].sum()/phoneme_loss[phoneme_targets!=-1].shape[0]
-                loss = loss + 1*word_loss + 1*phoneme_loss
+                loss = loss + word_loss + phoneme_loss
         return (output, word_output, phoneme_output), loss
 
 

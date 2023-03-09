@@ -112,8 +112,8 @@ def train_speech(tune_config, filename='best-params'):
     )
     train_dl, val_dl, _ = get_data_loaders(
         dataset,
-        val_size=0.2,
-        test_size=0,
+        val_size=0.1,
+        test_size=0.1,
         batch_size=tune_config["batch_size"],
         val_batch_size=16,
         test_batch_size=1,
@@ -159,9 +159,9 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, spe
     # Parameters to tune
     if speech:
             tune_config = {
-        "lr": tune.loguniform(2e-5, 1e-1),
-        "lr_decay": tune.choice([True, False]),
-        "max_epochs": tune.choice([15, 25, 35, 45]),
+        "lr": tune.loguniform(5e-6, 1e-4),
+        "lr_decay": tune.choice([False]),
+        "max_epochs": tune.choice([35, 45, 55, 65]),
         "batch_size": tune.choice([8, 16])
     }
     else:
@@ -242,4 +242,4 @@ if __name__ == "__main__":
     params_output_name = "speech-best-model.params" if clargs.speech else "baseline-best-model.params" # change this
 
     # Before running go to trainer.py and uncomment line#12
-    main(num_samples=15, max_num_epochs=25, gpus_per_trial=1, filename=params_output_name, speech=clargs.speech)
+    main(num_samples=15, max_num_epochs=70, gpus_per_trial=1, filename=params_output_name, speech=clargs.speech)
