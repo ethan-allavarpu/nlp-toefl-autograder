@@ -22,15 +22,12 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 
 torch.manual_seed(0)
-global_args = None
+global_args = None;
+model_min_loss=float('inf');
 
 class Namespace:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-
-def load_data(tokenizer):
-    dataset = utils.get_dataset(global_args, tokenizer)
-    return dataset
 
 def load_data(tokenizer):
     dataset = utils.get_dataset(global_args, tokenizer)
@@ -76,23 +73,27 @@ def train_finetune(tune_config, filename='best-params'):
     )
 
     trainer.tokens = 0 # counter used for learning rate decay
-    model_min_loss = float('inf')
+
     for epoch in range(tune_config["max_epochs"]):
         train_loss = trainer.train('train', epoch)
         if trainer.val_dataloader:
             val_loss = trainer.train('val', epoch)
         else:
             val_loss = None
-        
+        global model_min_loss
         if (val_loss < model_min_loss):
             model_min_loss = val_loss
+            tune_config['stopping_epoch'] = epoch
             torch.save(model.state_dict(), "/home/ubuntu/nlp-toefl-autograder/tuning/"+filename)
             with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+filename+".txt", 'w') as convert_file:
                 convert_file.write(json.dumps(tune_config))
 
         trainer.losses.append((train_loss, val_loss))
         tune.report(loss=(val_loss))
-        
+    with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+str(tune_config)+".txt", 'w') as convert_file:
+                convert_file.write(json.dumps(trainer.losses))
+    
+    
     print("Finished Training")
 
 def train_speech(tune_config, filename='best-params'):
@@ -133,22 +134,24 @@ def train_speech(tune_config, filename='best-params'):
     )
 
     trainer.tokens = 0 # counter used for learning rate decay
-    model_min_loss = float('inf')
     for epoch in range(tune_config["max_epochs"]):
         train_loss = trainer.train('train', epoch)
         if trainer.val_dataloader:
             val_loss = trainer.train('val', epoch)
         else:
             val_loss = None
-        
+        global model_min_loss
         if (val_loss < model_min_loss):
             model_min_loss = val_loss
             torch.save(model.state_dict(), "/home/ubuntu/nlp-toefl-autograder/tuning/"+filename)
+            tune_config['stopping_epoch'] = epoch
             with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+filename+".txt", 'w') as convert_file:
                 convert_file.write(json.dumps(tune_config))
 
         trainer.losses.append((train_loss, val_loss))
         tune.report(loss=(val_loss))
+        with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+str(tune_config)+".txt", 'w') as convert_file:
+                convert_file.write(json.dumps(trainer.losses))
         
     print("Finished Training")
 
@@ -176,7 +179,7 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, spe
         metric="loss",
         mode="min",
         max_t=max_num_epochs,
-        grace_period=10,
+        grace_period=max_num_epochs,
         reduction_factor=2,
     )
 
@@ -242,4 +245,4 @@ if __name__ == "__main__":
     params_output_name = "speech-best-model.params" if clargs.speech else "baseline-best-model.params" # change this
 
     # Before running go to trainer.py and uncomment line#12
-    main(num_samples=15, max_num_epochs=70, gpus_per_trial=1, filename=params_output_name, speech=clargs.speech)
+    main(num_samples=5, max_num_epochs=70, gpus_per_trial=1, filename=params_output_name, speech=clargs.speech)
