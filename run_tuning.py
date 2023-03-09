@@ -33,7 +33,8 @@ def load_data(tokenizer):
     dataset = utils.get_dataset(global_args, tokenizer)
     return dataset
 
-def train_finetune(tune_config, filename='best-params'):
+def train_written(tune_config, filename, model_name):
+    from modeling import trainer
     args = global_args  
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -41,7 +42,6 @@ def train_finetune(tune_config, filename='best-params'):
     )
 
     dataset = load_data(tokenizer)
-    from modeling import trainer
     train_config = trainer.TrainerConfig(
         max_epochs=tune_config["max_epochs"],
         learning_rate=tune_config["lr"],
@@ -57,11 +57,17 @@ def train_finetune(tune_config, filename='best-params'):
         test_batch_size=1,
         num_workers=0,
     )
-    model = BaseModel(
-        seq_length=dataset.tokenizer.model_max_length,
-        num_outputs=len(dataset.targets.columns),
-        pretrain_model_name=args.tokenizer_name,
-    )
+    if model_name == 'baseline':
+        model = BaseModel(
+            seq_length=dataset.tokenizer.model_max_length,
+            num_outputs=len(dataset.targets.columns),
+            pretrain_model_name=args.tokenizer_name,
+        )
+    elif model_name == 'ets':
+          model = ETSModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+    elif model_name == 'hierarchical':
+         model = model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns) - 1, pretrain_model_name=args.tokenizer_name)
+    
     if args.reading_params_path is not None:
         model.load_state_dict(torch.load(args.reading_params_path), strict=False)
 
@@ -155,20 +161,20 @@ def train_speech(tune_config, filename='best-params'):
         
     print("Finished Training")
 
-def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, speech: bool = False):
+def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filename=None):
     os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = "1"
     os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1" 
 
     # Parameters to tune
-    if speech:
-            tune_config = {
-        "lr": tune.loguniform(5e-6, 1e-4),
-        "lr_decay": tune.choice([False]),
-        "max_epochs": tune.choice([35, 45, 55, 65]),
-        "batch_size": tune.choice([8, 16])
-    }
+    if model_name == 'speech':
+         tune_config = {
+            "lr": tune.loguniform(5e-6, 1e-4),
+            "lr_decay": tune.choice([False]),
+            "max_epochs": tune.choice([35, 45, 55, 65]),
+            "batch_size": tune.choice([8, 16])
+        }
     else:
-        tune_config = {
+         tune_config = {
             "lr": tune.loguniform(2e-5, 1e-1),
             "lr_decay": tune.choice([True, False]),
             "max_epochs": tune.choice([5, 10, 15, 20]),
@@ -186,23 +192,24 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, spe
     reporter = CLIReporter(
         metric_columns=["loss", "training_iteration"]
     )
-    if speech:
+    
+    if model_name == 'speech':
         result = tune.run(
-        partial(train_speech, filename=filename),
-        resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
-        config=tune_config,
-        num_samples=num_samples,
-        scheduler=scheduler,
-        progress_reporter=reporter
+            partial(train_speech, filename=filename),
+            resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
+            config=tune_config,
+            num_samples=num_samples,
+            scheduler=scheduler,
+            progress_reporter=reporter
         )
     else:
         result = tune.run(
-        partial(train_finetune, filename=filename),
-        resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
-        config=tune_config,
-        num_samples=num_samples,
-        scheduler=scheduler,
-        progress_reporter=reporter
+            partial(train_written, filename=filename, model_name = model_name),
+            resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
+            config=tune_config,
+            num_samples=num_samples,
+            scheduler=scheduler,
+            progress_reporter=reporter
         )
 
     best_trial = result.get_best_trial("loss", "min", "last")
@@ -213,36 +220,67 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=2, filename=None, spe
 
 if __name__ == "__main__":
     argp = argparse.ArgumentParser()
-    argp.add_argument('--speech', help='Should we run speech model', action='store_true')
+    argp.add_argument('--model', type=str, help='Choose speech/ets/hierarchical/baseline', required=True)
     clargs = argp.parse_args()
 
     import sys
     sys.stdout.fileno = lambda: False
 
     # Make args for tuning and set global equal to those args.
-    baseline_args = Namespace(
-        ICNALE_output="overall",
-        dataset="ICNALE-EDITED",
-        function="finetune",
-        learning_rate=2e-05,
-        loss_path="losses.txt",
-        lr_decay=False,
-        max_epochs=20,
-        model_type="base",
-        outputs_path="predictions.txt",
-        reading_params_path=None,
-        tokenizer_name="distilbert-base-uncased",
-        writing_params_path="icnale-baseline.params",
-    )
     speech_args = Namespace(
         tokenizer_name = "facebook/wav2vec2-base",
         dataset = "SPEECHOCEAN",
         model_type = "speech",
         reading_params_path=None
     )
+    ets_args = Namespace(
+        ICNALE_output="overall",
+        dataset="ETS",
+        function="pretrain",
+        model_type="ets",
+        reading_params_path=None,
+        tokenizer_name="distilbert-base-uncased",
+        writing_params_path="double-pretrain-ets1.params"
+        )
+    hierarchical_args = Namespace(
+        ICNALE_output="overall",
+        dataset="ELL-ICNALE",
+        function="finetune",
+        model_type="hierarchical",
+        reading_params_path=None,
+        tokenizer_name="distilbert-base-uncased",
+        writing_params_path="hierarchical-model-1.params"
+    )
+    baseline_args = Namespace(
+        ICNALE_output="overall",
+        dataset="ICNALE-EDITED",
+        function="finetune",
+        model_type="base",
+        reading_params_path=None,
+        tokenizer_name="distilbert-base-uncased",
+        writing_params_path="icnale-baseline.params"
+    )
+    
 
-    global_args = speech_args if clargs.speech else baseline_args # change this
-    params_output_name = "speech-best-model.params" if clargs.speech else "baseline-best-model.params" # change this
+    if clargs.model == 'speech':
+         global_args = speech_args
+         params_output_name = "speech-best-model.params"
+         trials, epochs_per_trial  = 15, 70
+    elif clargs.model == 'ets':
+         global_args = ets_args
+         params_output_name = "ets-best-model.params"
+         trials, epochs_per_trial  = 15, 20
+    elif clargs.model == 'hierarchical':
+         global_args = hierarchical_args
+         params_output_name = "hierarchical-best-model.params"
+         trials, epochs_per_trial  = 15, 20
+    elif clargs.model == 'baseline':
+         global_args = baseline_args
+         params_output_name = "baseline-best-model.params"
+         trials, epochs_per_trial  = 15, 20
+    else:
+         print("choose a valid model")
+         sys.exit(0)
 
     # Before running go to trainer.py and uncomment line#12
-    main(num_samples=5, max_num_epochs=70, gpus_per_trial=1, filename=params_output_name, speech=clargs.speech)
+    main(model_name=clargs.model, num_samples=trials, max_num_epochs=epochs_per_trial, gpus_per_trial=1, filename=params_output_name)
