@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn import functional as F
-from modeling.model import BaseModel, ETSModel, HierarchicalModel, SpeechModel
+from modeling.model import BaseModel, ETSModel, HierarchicalModel, SpeechModel, SiameseSpeechModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoTokenizer, AutoFeatureExtractor
 import random
@@ -102,7 +102,7 @@ def train_written(tune_config, filename, model_name):
     
     print("Finished Training")
 
-def train_speech(tune_config, filename='best-params'):
+def train_speech(tune_config, model_name, filename='best-params'):
     args = global_args  
 
     tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
@@ -126,7 +126,8 @@ def train_speech(tune_config, filename='best-params'):
         test_batch_size=1,
         num_workers=0,
     )
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    use_mod = SpeechModel if model_name == "speech" else SiameseSpeechModel
+    model = use_mod(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
 
     if args.reading_params_path is not None:
@@ -166,7 +167,7 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
     os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1" 
 
     # Parameters to tune
-    if model_name == 'speech':
+    if model_name.contains('speech'):
          tune_config = {
             "lr": tune.loguniform(5e-6, 1e-4),
             "lr_decay": tune.choice([False]),
@@ -195,9 +196,9 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
         metric_columns=["loss", "training_iteration"]
     )
     
-    if model_name == 'speech':
+    if model_name.contains('speech'):
         result = tune.run(
-            partial(train_speech, filename=filename),
+            partial(train_speech, filename=filename, model_name=model_name),
             resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
             config=tune_config,
             num_samples=num_samples,
@@ -267,6 +268,10 @@ if __name__ == "__main__":
     if clargs.model == 'speech':
          global_args = speech_args
          params_output_name = "speech-best-model.params"
+         trials, epochs_per_trial  = 15, 70
+    elif clargs.model == 'siamese-speech':
+         global_args = speech_args
+         params_output_name = "siamese-speech-best-model.params"
          trials, epochs_per_trial  = 15, 70
     elif clargs.model == 'ets':
          global_args = ets_args
