@@ -171,14 +171,16 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
             "lr": tune.loguniform(5e-6, 1e-4),
             "lr_decay": tune.choice([False]),
             "max_epochs": tune.choice([35, 45, 55, 65]),
-            "batch_size": tune.choice([8, 16])
+            "batch_size": tune.choice([8, 16]),
+            "model_name" : model_name
         }
     else:
          tune_config = {
             "lr": tune.loguniform(2e-5, 1e-1),
             "lr_decay": tune.choice([True, False]),
             "max_epochs": tune.choice([5, 10, 15, 20]),
-            "batch_size": tune.choice([4, 8, 16])
+            "batch_size": tune.choice([4, 8, 16]),
+            "model_name" : model_name
         }
 
     scheduler = ASHAScheduler(
