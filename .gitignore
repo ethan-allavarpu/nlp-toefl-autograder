@@ -1,6 +1,7 @@
 # Additional ignore files
 *.DS_Store
 expt/
+settings.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

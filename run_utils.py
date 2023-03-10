@@ -38,8 +38,8 @@ def get_dataset(args, tokenizer):
             return DefaultDataset(file_path=FCE_DATA_DIR, input_col='essay', target_cols=['overall_score'], 
                                     tokenizer=tokenizer)
         elif args.dataset == "ETS":
-            return DefaultDataset(file_path=ETS_DATA_DIR, input_col='response', target_cols=['score'], 
-                                    tokenizer=tokenizer)
+            return DefaultDataset(file_path=ETS_DATA_DIR, input_col='response', target_cols=['low', 'medium', 'high'], 
+                                    tokenizer=tokenizer, normalize=False)
         else:
             raise ValueError("Invalid dataset name")
     elif args.model_type == "hierarchical":
@@ -61,7 +61,7 @@ def get_dataset(args, tokenizer):
                                         tokenizer=tokenizer)
         elif args.dataset == "ETS":
             return DefaultDataset(file_path=ETS_DATA_DIR, input_col='response', target_cols=['score'], 
-                                    tokenizer=tokenizer)
+                                    tokenizer=tokenizer, normalize=False)
         else:
             raise ValueError("Invalid dataset name")
 

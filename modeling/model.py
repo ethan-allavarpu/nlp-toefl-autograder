@@ -34,17 +34,21 @@ class ETSModel(torch.nn.Module):
         self.seq_length = seq_length
         self.l1 = AutoModel.from_pretrained(pretrain_model_name, trust_remote_code=True)
         self.l2 = torch.nn.Dropout(0.3)
-        self.final = torch.nn.Linear(self.seq_length*768, num_outputs)
+        self.l3 = torch.nn.Linear(self.seq_length*768, self.seq_length)
+        self.relu_layer = torch.nn.ReLU()
+        self.final = torch.nn.Linear(self.seq_length, num_outputs)
     
     def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
-        output = self.final(output_2)
+        output_3 = self.l3(output_2)
+        output_relu = self.relu_layer(output_3)
+        output = self.final(output_relu)
         # if we are given some desired targets also calculate the loss
         loss = None
         if targets is not None:
-            loss = nn.MSELoss()(output.float(), targets.float())
+            loss = nn.CrossEntropyLoss()(output.float(), targets.float())
         return output, loss
 
 

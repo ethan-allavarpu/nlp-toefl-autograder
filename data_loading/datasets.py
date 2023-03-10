@@ -15,7 +15,7 @@ def pad_up_to(t, max_in_dims, constant_values):
 
 class DefaultDataset(torch.utils.data.Dataset):
     def __init__(self, file_path, input_col: str, target_cols: Sequence[str], index_col: str = None,
-                 tokenizer: Any = None, tokenizer_params: Dict = None):
+                 tokenizer: Any = None, tokenizer_params: Dict = None, normalize=True):
         self.data = pd.read_csv(file_path)
         # set index col so we can use it as a key
         if index_col:
@@ -25,7 +25,8 @@ class DefaultDataset(torch.utils.data.Dataset):
         self.inputs = pd.DataFrame(self.data[input_col])
         self.targets = pd.DataFrame(self.data[target_cols])
         # normalize the targets
-        self.normalize_targets()
+        if normalize:
+            self.normalize_targets()
         # here we can provide the tokenizer!
         self.tokenizer = tokenizer
         # default tokenizer params
@@ -78,14 +79,14 @@ class CombinedDataset(torch.utils.data.Dataset):
         self.inputs = pd.concat([inputs1, inputs2])
         self.inputs.index = self.indices
         # Can switch between normalizing and standardizing
-        targets1 = self.normalize_targets(
+        targets1 = self.standardize_targets(
             pd.DataFrame(self.data1[target_cols1])
         )
         for i in range(len(target_cols2)):
             targets1 = pd.concat([
                 targets1, pd.Series([-1000 for j in range(len(targets1))])
             ], axis=1)
-        targets2 = self.normalize_targets(
+        targets2 = self.standardize_targets(
             pd.DataFrame(self.data2[target_cols2])
         )
         targets1.columns = target_cols

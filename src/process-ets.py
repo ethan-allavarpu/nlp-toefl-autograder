@@ -75,8 +75,8 @@ def write_ets_csv(
     essay_files = get_all_filepaths(directory)
     essay_df = [join_essay_score(file, join_table) for file in essay_files]
     essay_df = pd.DataFrame(essay_df)
-    score_dict = {"low": 1, "medium": 2, "high": 3}
-    essay_df.score = essay_df.score.apply(lambda x: score_dict[x])
+    dummy_scores = pd.get_dummies(essay_df.score)
+    essay_df = pd.concat((essay_df.drop(columns=["score"]), dummy_scores), axis=1)
     essay_df.to_csv(output_filepath, index=False)
     return int(essay_df.shape[0])
 
