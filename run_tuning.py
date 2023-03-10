@@ -167,7 +167,7 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
     os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1" 
 
     # Parameters to tune
-    if model_name.contains('speech'):
+    if model_name in ["speech", "siamese-speech"]:
          tune_config = {
             "lr": tune.loguniform(5e-6, 1e-4),
             "lr_decay": tune.choice([False]),
@@ -196,7 +196,7 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
         metric_columns=["loss", "training_iteration"]
     )
     
-    if model_name.contains('speech'):
+    if model_name in ["speech", "siamese-speech"]:
         result = tune.run(
             partial(train_speech, filename=filename, model_name=model_name),
             resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
