@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn import functional as F
-from modeling.model import SpeechModel
+from modeling.model import SpeechModel, SiameseSpeechModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoFeatureExtractor
 import random
@@ -38,7 +38,7 @@ tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
 # instantiate the dataset
 if args.dataset == "SPEECHOCEAN":
     dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'fluency', 'prosodic', 'total'],
-    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ['phones-accuracy'], tokenizer=tokenizer)
+    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ["phones-accuracy"], tokenizer=tokenizer)
 else:
     raise ValueError("Invalid dataset name")
                              
@@ -57,7 +57,7 @@ elif args.function == 'finetune':
             learning_rate=args.learning_rate, 
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    model = SiameseSpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
     trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=val_dl)
     trainer.train(split='train', step=0)
@@ -69,7 +69,7 @@ elif args.function == 'finetune':
 elif args.function == 'evaluate':
     train_dl, val_dl, test_dl = get_data_loaders(dataset, val_size=0.1, test_size=0.1, batch_size=16, val_batch_size=16,
         test_batch_size=1, num_workers=0)
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    model = SiameseSpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
 
     model.load_state_dict(torch.load(args.reading_params_path, map_location=torch.device('cpu')))
@@ -84,9 +84,7 @@ elif args.function == 'evaluate':
     for it, (x, y) in pbar:
         # place data on the correct device
         x = x.to(device)
-        one_output = (type(y) != list)
-        #flattened_preds = [item for sublist in [predictions[0].tolist() for predictions in model(x, one_output=one_output)[0]] for item in sublist]
-        #flattened_actuals = [item for sublist in y.tolist() for item in sublist]
+        one_output = (len(y)<3)
         predictions.append(({**dict(zip(pred_cols, model(x, one_output=one_output)[0][0][0].tolist())), **dict(zip(actual_cols, y[0][0].tolist()))}))
         torch.cuda.empty_cache()
 

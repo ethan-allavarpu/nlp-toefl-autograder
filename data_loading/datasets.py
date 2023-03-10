@@ -139,7 +139,7 @@ class SpeechDataset(torch.utils.data.Dataset):
         [x[input_col]['array'] for x in self.data], ** tokenizer_params)
         self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
 
-        # 22050 for correct speech
+        # Tokenize correct speech
         self.correct_speech = tokenizer(self.data['correct_speech'],  ** tokenizer_params)['input_values']
         
     
@@ -221,8 +221,8 @@ class SpeechDataset(torch.utils.data.Dataset):
             phones_output = torch.Tensor(phones_output)
             phones_output = pad(phones_output, (0, self.phoneme_seq_length-phones_output.shape[1], 0, 0), value=-1)
         if (phones_output is None) and (words_output is None):
-            return self.inputs[index], self.targets_sentence.loc[index].values
-        return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output]
+            return self.inputs[index], [self.targets_sentence.loc[index].values, self.correct_speech[index]]
+        return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output, self.correct_speech[index]]
 
             
     def __len__(self) -> int:
