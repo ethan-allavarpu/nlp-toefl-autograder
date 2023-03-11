@@ -149,6 +149,7 @@ def train_speech(tune_config, model_name, filename='best-params'):
         else:
             val_loss = None
         global model_min_loss
+        print(model_min_loss)
         if (val_loss < model_min_loss):
             model_min_loss = val_loss
             torch.save(model.state_dict(), "/home/ubuntu/nlp-toefl-autograder/tuning/"+filename)
@@ -158,8 +159,8 @@ def train_speech(tune_config, model_name, filename='best-params'):
 
         trainer.losses.append((train_loss, val_loss))
         tune.report(loss=(val_loss))
-        with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+str(tune_config)+".txt", 'w') as convert_file:
-                convert_file.write(json.dumps(trainer.losses))
+    with open(f"/home/ubuntu/nlp-toefl-autograder/tuning/speech/{str(tune_config)}.txt", 'w') as convert_file:
+            convert_file.write(json.dumps(trainer.losses))
         
     print("Finished Training")
 
@@ -170,10 +171,10 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
     # Parameters to tune
     if model_name in ["speech", "siamese-speech"]:
          tune_config = {
-            "lr": tune.loguniform(5e-6, 1e-4),
+            "lr": tune.loguniform(1e-6, 5e-5),
             "lr_decay": tune.choice([False]),
-            "max_epochs": tune.choice([35, 45, 55, 65]),
-            "batch_size": tune.choice([8, 16]),
+            "max_epochs": tune.choice([35]),
+            "batch_size": tune.choice([16, 32]),
             "model_name" : model_name
         }
     else:
@@ -269,7 +270,7 @@ if __name__ == "__main__":
     if clargs.model == 'speech':
          global_args = speech_args
          params_output_name = "speech-best-model.params"
-         trials, epochs_per_trial  = 15, 70
+         trials, epochs_per_trial  = 10, 70
     elif clargs.model == 'siamese-speech':
          global_args = speech_args
          params_output_name = "siamese-speech-best-model.params"

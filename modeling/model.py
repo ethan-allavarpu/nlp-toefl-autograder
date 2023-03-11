@@ -15,7 +15,7 @@ class BaseModel(torch.nn.Module):
         self.l5 = torch.nn.Linear(self.seq_length, num_outputs)
 
         
-    def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
+    def forward(self, data: Any, targets: Any = None, eval_output: bool = False, **kwargs):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
@@ -38,7 +38,7 @@ class ETSModel(torch.nn.Module):
         self.relu_layer = torch.nn.ReLU()
         self.final = torch.nn.Linear(self.seq_length, num_outputs)
     
-    def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
+    def forward(self, data: Any, targets: Any = None, eval_output: bool = False, **kwargs):
         output_1= self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         # output_2 = self.l2(output_1['pooler_output'])
         output_2 = self.l2(output_1['last_hidden_state'].reshape(-1, self.seq_length*768))
@@ -61,7 +61,7 @@ class HierarchicalModel(torch.nn.Module):
         self.l3 = torch.nn.Linear(self.seq_length*768, num_outputs)
         self.l4 = torch.nn.Linear(num_outputs, 1)
     
-    def forward(self, data: Any, targets: Any = None, eval_output: bool = False):
+    def forward(self, data: Any, targets: Any = None, eval_output: bool = False, **kwargs):
         x1 = self.l1(input_ids=data['input_ids'].squeeze(1), attention_mask = data['attention_mask'].squeeze(1))
         x2 = self.l2(x1['last_hidden_state'].reshape(-1, self.seq_length*768))
         multi_out = self.l3(x2)
@@ -98,8 +98,9 @@ class SpeechModel(torch.nn.Module):
         self.word_seq_length = word_seq_length
         self.phoneme_seq_length = phoneme_seq_length
     
-    def forward(self, data: Any, targets: Any = None, one_output: bool = True):
-        if (len(targets)<3) & (one_output):
+    def forward(self, data: Any, targets: Any = None, one_output: bool = False, val: bool = False):
+        # if (one_output) | ((targets is not None) & (len(targets)<3)):
+        if (one_output):
             output_1= self.l1(data)
             output_2 = output_1['last_hidden_state'].reshape(-1, 312*768)
             output = self.l3(output_2)
@@ -137,7 +138,11 @@ class SpeechModel(torch.nn.Module):
                 phoneme_targets = targets[2].float().reshape(-1, 30*1)
                 phoneme_loss = nn.MSELoss(reduction='none')(phoneme_fc.float(), phoneme_targets)
                 phoneme_loss = phoneme_loss[phoneme_targets!=-1].sum()/phoneme_loss[phoneme_targets!=-1].shape[0]
-                loss = loss + word_loss + phoneme_loss
+                if not val:
+                    loss = loss + word_loss + phoneme_loss
+                    print(f'word loss: {word_loss}')
+                    print(f'phoneme loss: {phoneme_loss}')
+                    print(f'overall loss: {loss}')
         return (output, word_output, phoneme_output), loss
 
 

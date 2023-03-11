@@ -80,7 +80,7 @@ batch_size: int = 32, val_batch_size: int = 16, test_batch_size: int = 16, num_w
     np.random.shuffle(idx)
     l = idx.shape[0]
     test_idx = idx[: int(l * test_size)]
-    val_idx = idx[int(l * test_size) : int(l * val_size)]
+    val_idx = idx[int(l * test_size) : int(l * (val_size+ test_size))]
     train_idx = idx[int(l * (val_size+test_size)):] 
     train_ds = Subset(dataset, np.where(np.isin(dataset.data[index_col], train_idx))[0])
     val_ds = Subset(dataset, np.where(np.isin(dataset.data[index_col], val_idx))[0])

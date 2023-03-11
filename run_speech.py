@@ -66,7 +66,7 @@ elif args.function == 'finetune':
             learning_rate=args.learning_rate, 
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
-    model = SiameseSpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
     trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=val_dl)
     trainer.train(split='train', step=0)
@@ -81,12 +81,12 @@ elif args.function == 'evaluate':
         index_col="speaker_id",
         val_size=0.1,
         test_size=0.1,
-        batch_size=tune_config["batch_size"],
+        batch_size=16,
         val_batch_size=16,
         test_batch_size=1,
         num_workers=0,
     )
-    model = SiameseSpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
 
     model.load_state_dict(torch.load(args.reading_params_path, map_location=torch.device('cpu')))

@@ -143,9 +143,10 @@ class SpeechDataset(torch.utils.data.Dataset):
         self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
 
         # Tokenize correct speech
+        self.correct_speech = [5 for x in self.data]
         # self.correct_speech = tokenizer(self.data['correct_speech'],  ** tokenizer_params)['input_values']
-        self.correct_speech = pd.read_csv('data/speechocean/correct_speech.csv').to_numpy()
-        self.correct_speech = np.array([np.trim_zeros(c, trim='b') for c in self.correct_speech])
+        # self.correct_speech = pd.read_csv('data/speechocean/correct_speech.csv').to_numpy()
+        # self.correct_speech = np.array([np.trim_zeros(c, trim='b') for c in self.correct_speech])
 
         self.targets_sentence = pd.DataFrame([[x[t] for t in target_cols_sentence] for x in self.data ], columns=target_cols_sentence)
         if (len(target_cols_words) > 0) | (len(target_cols_phones) > 0):
