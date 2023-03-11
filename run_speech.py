@@ -5,6 +5,7 @@ import torch.nn as nn
 from tqdm import tqdm
 from torch.nn import functional as F
 from modeling.model import SpeechModel, SiameseSpeechModel
+from modeling.model import SpeechModel, SiameseSpeechModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoFeatureExtractor
 import random
