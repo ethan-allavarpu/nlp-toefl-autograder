@@ -5,7 +5,10 @@ import pandas as pd
 import sys
 sys.path.append('../../')
 from espnet2.bin.tts_inference import Text2Speech
-
+import json
+from espnet2.bin.tts_inference import Text2Speech
+import torch
+from scipy.io.wavfile import write
 
 audio_files = [
     os.path.join(dp, f)
@@ -58,31 +61,6 @@ ds = Dataset.from_dict(
     {**{"audio": scores["file_name"].values.tolist()}, **scores.to_dict("list")}
 ).cast_column("audio", Audio())
 
-model = Text2Speech.from_pretrained("espnet/kan-bayashi_ljspeech_vits", "parallel_wavegan/csmsc_multi_band_melgan.v2",
-    threshold=0.5,
-    # Only for Tacotron 2
-    minlenratio=0.0,
-    maxlenratio=10.0,
-    use_att_constraint=False,
-    backward_window=1,
-    forward_window=3,
-    # Only for FastSpeech & FastSpeech2 & VITS
-    speed_control_alpha=1.0,
-    # Only for VITS
-    noise_scale=0.333,
-    noise_scale_dur=0.333)
-# model.tts.fs = 16000
-correct_speech = [model(t.lower())['wav'] for t in ds['text']]
-ds = ds.cast_column("audio", Audio(sampling_rate=16000))
-ds = ds.add_column("correct_speech", [c.numpy() for c in correct_speech])
-ds.push_to_hub("siegels/speechocean", token=os.environ.get("HUGGINGFACE_TOKEN"))
-ds = ds.remove_columns("correct_speech")
-
-
-from espnet2.bin.tts_inference import Text2Speech
-from scipy.io.wavfile import write
-resampled = [librosa.resample(j.numpy().T, orig_sr=22050, target_sr = 16000) for j in correct_speech]
-
 model = Text2Speech.from_pretrained(
     model_tag="espnet/english_male_ryanspeech_tacotron",
         threshold=0.5,
@@ -95,6 +73,39 @@ model = Text2Speech.from_pretrained(
     speed_control_alpha=0.5,
 )
 correct_speech = [model(t.lower())['wav'] for t in ds['text']]
-librosa.resample(correct_speech[0].numpy().T, orig_sr=22050, target_sr = 16000)
-write("test.wav", 22050, output['wav'].numpy())
+#ds = ds.cast_column("audio", Audio(sampling_rate=16000))
+# ds = ds.add_column("correct_speech", [c.numpy() for c in correct_speech])
+ds.push_to_hub("siegels/speechocean", token=os.environ.get("HUGGINGFACE_TOKEN"))
+ds = ds.remove_columns("correct_speech")
+
+model = Text2Speech.from_pretrained(
+    model_tag="espnet/english_male_ryanspeech_tacotron",
+    vocoder_file='/Users/spencersiegel/Documents/Stanford/Winter 2023/nlp-toefl-autograder/data/speechocean/train_nodev_parallel_wavegan.v1.long/checkpoint-1000000steps.pkl'
+    )
+
+model = Text2Speech.from_pretrained(
+    model_tag="espnet/english_male_ryanspeech_tacotron",
+        threshold=0.5,
+    # Only for Tacotron 2
+    minlenratio=0.0,
+    maxlenratio=10.0,
+    use_att_constraint=False,
+    backward_window=1,
+    forward_window=3,
+    speed_control_alpha=0.5,
+)
+with torch.no_grad():
+    correct_speech = [model(t.lower())['wav'] for t in ds['text']]
+resampled = [librosa.resample(c.numpy().T, orig_sr=22050, target_sr = 16000) for c in correct_speech]
+# output_dict = {ds['file_name'][idx]:r.tolist() for idx, r in enumerate(resampled)}
+# json_object = json.dumps(output_dict)
+ 
+# # Writing to json
+# with open("correct_speech.json", "w") as outfile:
+#     outfile.write(json_object)
+
+data = np.array([np.pad(row, (0, 100000-len(row))) for row in resampled])
+pd.DataFrame(data).to_csv('correct_speech.csv', index=False)
+
+# write("test.wav", 22050, output['wav'].numpy())
 

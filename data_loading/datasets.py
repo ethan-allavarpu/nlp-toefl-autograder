@@ -5,6 +5,9 @@ import numpy as np
 from datasets import load_dataset, Dataset
 import torch.nn.functional as F
 from torch.nn.functional import pad
+from espnet2.bin.tts_inference import Text2Speech
+from scipy.io.wavfile import write
+import json
 
 T_co = TypeVar('T_co', covariant=True)
 
@@ -139,10 +142,11 @@ class SpeechDataset(torch.utils.data.Dataset):
         [x[input_col]['array'] for x in self.data], ** tokenizer_params)
         self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
 
-        # 22050 for correct speech
-        self.correct_speech = tokenizer(self.data['correct_speech'],  ** tokenizer_params)['input_values']
-        
-    
+        # Tokenize correct speech
+        # self.correct_speech = tokenizer(self.data['correct_speech'],  ** tokenizer_params)['input_values']
+        self.correct_speech = pd.read_csv('data/speechocean/correct_speech.csv').to_numpy()
+        self.correct_speech = np.array([np.trim_zeros(c, trim='b') for c in self.correct_speech])
+
         self.targets_sentence = pd.DataFrame([[x[t] for t in target_cols_sentence] for x in self.data ], columns=target_cols_sentence)
         if (len(target_cols_words) > 0) | (len(target_cols_phones) > 0):
             targets_words, targets_phones = self.compute_subtargets(target_cols_words, target_cols_phones)
@@ -221,8 +225,8 @@ class SpeechDataset(torch.utils.data.Dataset):
             phones_output = torch.Tensor(phones_output)
             phones_output = pad(phones_output, (0, self.phoneme_seq_length-phones_output.shape[1], 0, 0), value=-1)
         if (phones_output is None) and (words_output is None):
-            return self.inputs[index], self.targets_sentence.loc[index].values
-        return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output]
+            return self.inputs[index], [self.targets_sentence.loc[index].values, self.correct_speech[index]]
+        return self.inputs[index], [self.targets_sentence.loc[index].values, words_output, phones_output, self.correct_speech[index]]
 
             
     def __len__(self) -> int:

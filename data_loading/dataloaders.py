@@ -6,6 +6,7 @@ from torch import default_generator, randperm
 from torch._utils import _accumulate
 from torch.utils.data.dataset import Subset
 import warnings
+import numpy as np
 
 def random_split(dataset, lengths,
                  generator=default_generator):
@@ -72,3 +73,21 @@ batch_size: int = 32, val_batch_size: int = 16, test_batch_size: int = 16, num_w
     
     return train_dl, (val_dl if len(val_dl)>0 else None), (test_dl if len(test_dl)>0 else None)
 
+def split_on_indices(dataset: torch.utils.data.Dataset, index_col: str, val_size: float = 0.0, test_size: float=0.0,
+batch_size: int = 32, val_batch_size: int = 16, test_batch_size: int = 16, num_workers: int = 0) -> DataLoader:
+    idx = np.array(list(set(dataset.data[index_col])))
+    np.random.seed(1)
+    np.random.shuffle(idx)
+    l = idx.shape[0]
+    test_idx = idx[: int(l * test_size)]
+    val_idx = idx[int(l * test_size) : int(l * val_size)]
+    train_idx = idx[int(l * (val_size+test_size)):] 
+    train_ds = Subset(dataset, np.where(np.isin(dataset.data[index_col], train_idx))[0])
+    val_ds = Subset(dataset, np.where(np.isin(dataset.data[index_col], val_idx))[0])
+    test_ds = Subset(dataset, np.where(np.isin(dataset.data[index_col], test_idx))[0])
+
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True,num_workers=num_workers, )
+    val_dl = DataLoader(val_ds, batch_size=val_batch_size, shuffle=False,num_workers=num_workers)
+    test_dl = DataLoader(test_ds, batch_size=test_batch_size, shuffle=False,num_workers=num_workers)
+
+    return train_dl, val_dl, test_dl
