@@ -23,7 +23,6 @@ from ray.tune.schedulers import ASHAScheduler
 
 torch.manual_seed(0)
 global_args = None;
-model_min_loss=float('inf');
 
 class Namespace:
     def __init__(self, **kwargs):
@@ -78,28 +77,32 @@ def train_written(tune_config, filename, model_name):
         config=train_config
     )
 
+    output_folder = "/home/ubuntu/nlp-toefl-autograder/tuning/{}/trial_{}/".format(model_name, tune.get_trial_id().split('_')[1])
+    os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     trainer.tokens = 0 # counter used for learning rate decay
-
+    model_min_loss=float('inf')
     for epoch in range(tune_config["max_epochs"]):
         train_loss = trainer.train('train', epoch)
         if trainer.val_dataloader:
             val_loss = trainer.train('val', epoch)
         else:
             val_loss = None
-        global model_min_loss
+
         if (val_loss < model_min_loss):
+
             model_min_loss = val_loss
             tune_config['stopping_epoch'] = epoch
-            torch.save(model.state_dict(), "/home/ubuntu/nlp-toefl-autograder/tuning/"+filename)
-            with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+filename+".txt", 'w') as convert_file:
+            tune_config['loss'] = val_loss
+
+            torch.save(model.state_dict(), output_folder+"best-model.params")
+            with open(output_folder+"best-model.txt", 'w') as convert_file:
                 convert_file.write(json.dumps(tune_config))
 
         trainer.losses.append((train_loss, val_loss))
-        tune.report(loss=(val_loss))
-    with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+str(tune_config)+".txt", 'w') as convert_file:
+        with open(output_folder+"all-losses.txt", 'w') as convert_file:
                 convert_file.write(json.dumps(trainer.losses))
-    
-    
+        tune.report(loss=(val_loss))
+    torch.save(model.state_dict(), output_folder+"final-model.params")
     print("Finished Training")
 
 def train_speech(tune_config, model_name, filename='best-params'):
@@ -141,27 +144,32 @@ def train_speech(tune_config, model_name, filename='best-params'):
         config=train_config
     )
 
+    output_folder = "/home/ubuntu/nlp-toefl-autograder/tuning/{}/trial_{}/".format(model_name, tune.get_trial_id().split('_')[1])
+    os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     trainer.tokens = 0 # counter used for learning rate decay
+    model_min_loss=float('inf')
     for epoch in range(tune_config["max_epochs"]):
         train_loss = trainer.train('train', epoch)
         if trainer.val_dataloader:
             val_loss = trainer.train('val', epoch)
         else:
             val_loss = None
-        global model_min_loss
-        print(model_min_loss)
+
         if (val_loss < model_min_loss):
+
             model_min_loss = val_loss
-            torch.save(model.state_dict(), "/home/ubuntu/nlp-toefl-autograder/tuning/"+filename)
             tune_config['stopping_epoch'] = epoch
-            with open("/home/ubuntu/nlp-toefl-autograder/tuning/"+filename+".txt", 'w') as convert_file:
+            tune_config['loss'] = val_loss
+
+            torch.save(model.state_dict(), output_folder+"best-model.params")
+            with open(output_folder+"best-model.txt", 'w') as convert_file:
                 convert_file.write(json.dumps(tune_config))
 
         trainer.losses.append((train_loss, val_loss))
+        with open(output_folder+"all-losses.txt", 'w') as convert_file:
+                convert_file.write(json.dumps(trainer.losses))
         tune.report(loss=(val_loss))
-    with open(f"/home/ubuntu/nlp-toefl-autograder/tuning/speech/{str(tune_config)}.txt", 'w') as convert_file:
-            convert_file.write(json.dumps(trainer.losses))
-        
+    torch.save(model.state_dict(), output_folder+"final-model.params")
     print("Finished Training")
 
 def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filename=None):
@@ -171,18 +179,23 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
     # Parameters to tune
     if model_name in ["speech", "siamese-speech"]:
          tune_config = {
-            "lr": tune.loguniform(1e-6, 5e-5),
+            "lr": tune.loguniform(2e-5, 2e-5),
             "lr_decay": tune.choice([False]),
             "max_epochs": tune.choice([35]),
-            "batch_size": tune.choice([16, 32]),
+            "batch_size": tune.choice([16]),
             "model_name" : model_name
         }
     else:
          tune_config = {
-            "lr": tune.loguniform(2e-5, 1e-1),
+            # "lr": tune.loguniform(2e-5, 1e-1),
+            # "lr_decay": tune.choice([True, False]),
+            # "max_epochs": tune.choice([25]),
+            # "batch_size": tune.choice([4, 8, 16]),
+            # "model_name" : model_name
+            "lr": tune.loguniform(1e-6, 1e-4),
             "lr_decay": tune.choice([True, False]),
-            "max_epochs": tune.choice([5, 10, 15, 20]),
-            "batch_size": tune.choice([4, 8, 16]),
+            "max_epochs": tune.choice([30]),
+            "batch_size": tune.choice([16, 32]),
             "model_name" : model_name
         }
 
@@ -270,7 +283,7 @@ if __name__ == "__main__":
     if clargs.model == 'speech':
          global_args = speech_args
          params_output_name = "speech-best-model.params"
-         trials, epochs_per_trial  = 10, 70
+         trials, epochs_per_trial  = 1, 70
     elif clargs.model == 'siamese-speech':
          global_args = speech_args
          params_output_name = "siamese-speech-best-model.params"
@@ -278,11 +291,11 @@ if __name__ == "__main__":
     elif clargs.model == 'ets':
          global_args = ets_args
          params_output_name = "ets-best-model.params"
-         trials, epochs_per_trial  = 15, 20
+         trials, epochs_per_trial  = 6, 50
     elif clargs.model == 'hierarchical':
          global_args = hierarchical_args
          params_output_name = "hierarchical-best-model.params"
-         trials, epochs_per_trial  = 15, 20
+         trials, epochs_per_trial  = 6, 50
     elif clargs.model == 'baseline':
          global_args = baseline_args
          params_output_name = "baseline-best-model.params"

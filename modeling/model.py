@@ -139,9 +139,9 @@ class SpeechModel(torch.nn.Module):
                 phoneme_loss = nn.MSELoss(reduction='none')(phoneme_fc.float(), phoneme_targets)
                 phoneme_loss = phoneme_loss[phoneme_targets!=-1].sum()/phoneme_loss[phoneme_targets!=-1].shape[0]
                 if not val:
-                    loss = loss + word_loss + phoneme_loss
-                    print(f'word loss: {word_loss}')
-                    print(f'phoneme loss: {phoneme_loss}')
+                    loss = loss + 2*word_loss + 2*phoneme_loss
+                    print(f'word loss: {word_loss*2}')
+                    print(f'phoneme loss: {phoneme_loss*2}')
                     print(f'overall loss: {loss}')
         return (output, word_output, phoneme_output), loss
 
@@ -238,6 +238,6 @@ class SiameseSpeechModel(torch.nn.Module):
                 phoneme_loss = phoneme_loss[phoneme_targets!=-1].sum()/phoneme_loss[phoneme_targets!=-1].shape[0]
                 phoneme_loss += siamese_phoneme_loss[phoneme_targets!=-1].sum()/siamese_phoneme_loss[phoneme_targets!=-1].shape[0]
 
-                loss = loss + word_loss + phoneme_loss
+                loss = loss + 2*word_loss + 2*phoneme_loss
             
         return (output, word_output, phoneme_output), loss
