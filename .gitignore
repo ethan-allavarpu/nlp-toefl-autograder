@@ -2,6 +2,7 @@
 *.DS_Store
 expt/
 settings.py
+*.params
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

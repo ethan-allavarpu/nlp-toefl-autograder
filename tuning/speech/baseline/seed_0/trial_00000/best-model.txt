@@ -1,0 +1,1 @@
+{"lr": 2e-05, "lr_decay": false, "max_epochs": 10, "batch_size": 16, "model_name": "speech", "stopping_epoch": 6, "loss": 78.15975251340866}

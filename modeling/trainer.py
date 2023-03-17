@@ -43,7 +43,7 @@ class TrainerConfig:
 
 class Trainer:
 
-    def __init__(self, model, train_dataloader, config, val_dataloader=None, test_dataloader=None):
+    def __init__(self, model, train_dataloader, config, val_dataloader=None, test_dataloader=None, one_output=False):
         self.model = model
         self.train_dataloader = train_dataloader
         self.test_dataloader = test_dataloader
@@ -51,6 +51,8 @@ class Trainer:
         self.val_dataloader = val_dataloader
         self.losses = []
         self.optimizer = self.create_optimizer()
+        # flag for speech
+        self.one_output = one_output
 
         # take over whatever gpus are on the system
         self.device = 'cpu'
@@ -95,8 +97,12 @@ class Trainer:
                 y = y.to(torch.float32).to(self.device)
 
             # forward the model
+            if is_train:
+                model.train()
+            else:
+                model.eval()
             with torch.set_grad_enabled(is_train):
-                logits, loss = model(x, y, val=(not is_train))
+                logits, loss = model(x, y, val=(not is_train), one_output=self.one_output)
                 loss = loss.mean() # collapse all losses if they are scattered on multiple gpus
                 losses.append(loss.item())
             if is_train:
@@ -109,7 +115,10 @@ class Trainer:
                 lr = config.learning_rate
                 # decay the learning rate based on our progress
                 if config.lr_decay:
-                    self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
+                    if type(y) == list:
+                        self.tokens += (y[0] >= 0).sum()
+                    else:
+                        self.tokens += (y >= 0).sum() # number of tokens processed this step (i.e. label is not -100)
                     if self.tokens < config.warmup_tokens:
                         # linear warmup
                         lr_mult = float(self.tokens) / float(max(1, config.warmup_tokens))

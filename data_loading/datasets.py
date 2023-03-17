@@ -131,7 +131,8 @@ class CombinedDataset(torch.utils.data.Dataset):
 class SpeechDataset(torch.utils.data.Dataset):
     def __init__(self, path_name: str, input_col: str, target_cols_sentence: Sequence[str], 
     target_cols_words: Sequence[str] = [], target_cols_phones: Sequence[str] = [],
-                 tokenizer: Any = None, tokenizer_params: Dict = None, phoneme_seq_length: int = 30, word_seq_length: int = 10):
+                 tokenizer: Any = None, tokenizer_params: Dict = None, phoneme_seq_length: int = 30, word_seq_length: int = 10,
+                 siamese: bool = False):
         self.data = load_dataset(path_name, split='train')
         self.tokenizer = tokenizer
 
@@ -143,10 +144,14 @@ class SpeechDataset(torch.utils.data.Dataset):
         self.inputs = self.inputs['input_features'] if ('input_features' in self.inputs) else self.inputs['input_values']
 
         # Tokenize correct speech
-        self.correct_speech = [5 for x in self.data]
-        # self.correct_speech = tokenizer(self.data['correct_speech'],  ** tokenizer_params)['input_values']
-        # self.correct_speech = pd.read_csv('data/speechocean/correct_speech.csv').to_numpy()
-        # self.correct_speech = np.array([np.trim_zeros(c, trim='b') for c in self.correct_speech])
+        if siamese:
+        # self.correct_speech = [5 for x in self.data]
+            self.correct_speech = load_dataset('siegels/speechocean_correct_data', split='train').to_pandas().to_numpy()
+            self.correct_speech = [np.trim_zeros(self.correct_speech[i], trim='b') for i in range(self.correct_speech.shape[0])]
+            self.correct_speech = tokenizer(self.correct_speech, ** tokenizer_params)
+            self.correct_speech = self.correct_speech['input_features'] if ('input_features' in self.correct_speech) else self.correct_speech['input_values']
+        else:
+            self.correct_speech = [5 for x in self.data]
 
         self.targets_sentence = pd.DataFrame([[x[t] for t in target_cols_sentence] for x in self.data ], columns=target_cols_sentence)
         if (len(target_cols_words) > 0) | (len(target_cols_phones) > 0):

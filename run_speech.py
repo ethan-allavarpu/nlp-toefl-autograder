@@ -28,6 +28,7 @@ argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to u
 argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="SPEECHOCEAN", required=False)
 argp.add_argument('--max_epochs', type=int, help='Number of epochs to train for', default=25, required=False)
 argp.add_argument('--learning_rate', type=float, help='Learning rate', default=2e-5, required=False)
+argp.add_argument('--seed', type=int, help='Number of epochs to train for', default=0, required=False)
 args = argp.parse_args()
 
 # Save the device
@@ -39,7 +40,7 @@ tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
 # instantiate the dataset
 if args.dataset == "SPEECHOCEAN":
     dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'fluency', 'prosodic', 'total'],
-    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ["phones-accuracy"], tokenizer=tokenizer)
+    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ["phones-accuracy"], tokenizer=tokenizer, siamese=False)
 else:
     raise ValueError("Invalid dataset name")
                              
@@ -56,8 +57,9 @@ elif args.function == 'finetune':
         test_size=0.1,
         batch_size=tune_config["batch_size"],
         val_batch_size=16,
-        test_batch_size=1,
+        test_batch_size=16,
         num_workers=0,
+        seed=args.seed
     )
     # TensorBoard training log
     writer = SummaryWriter(log_dir='expt/')
@@ -66,7 +68,7 @@ elif args.function == 'finetune':
             learning_rate=args.learning_rate, 
             num_workers=4, writer=writer, ckpt_path='expt/params.pt')
 
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    model = SpeechModel(num_outputs=(0 if dataset.targets_sentence is None else len(dataset.targets_sentence.columns)), pretrain_model_name=args.tokenizer_name,
     phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
     trainer = trainer.Trainer(model=model,  train_dataloader=train_dl, test_dataloader=test_dl, config=train_config, val_dataloader=val_dl)
     trainer.train(split='train', step=0)
@@ -81,33 +83,34 @@ elif args.function == 'evaluate':
         index_col="speaker_id",
         val_size=0.1,
         test_size=0.1,
-        batch_size=16,
+        batch_size=1,
         val_batch_size=16,
         test_batch_size=1,
         num_workers=0,
+        seed=args.seed
     )
-    model = SpeechModel(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
-    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = len(dataset.targets_words.columns))
+    model = SpeechModel(num_outputs=0 if dataset.targets_sentence is None else len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
+    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
 
     model.load_state_dict(torch.load(args.reading_params_path, map_location=torch.device('cpu')))
     model = model.to(device)
     model.eval()
+    torch.set_grad_enabled(False)
     predictions = []
 
-    pbar = tqdm(enumerate(test_dl), total=len(test_dl)) 
+    pbar = tqdm(enumerate(train_dl), total=len(train_dl)) 
     # pred_cols = [f'pred_{c}' for c in dataset.targets_sentence.columns] + [f'pred_word_{c}' for c in dataset.targets_words.columns] + [f'pred_{c}' for c in dataset.targets_phones.columns]
     pred_cols = [f'pred_{c}' for c in dataset.targets_sentence.columns]
     actual_cols = [f'actual_{c}' for c in dataset.targets_sentence.columns]
     for it, (x, y) in pbar:
         # place data on the correct device
-        x = x.to(device)
-        one_output = (len(y)<3)
-        predictions.append(({**dict(zip(pred_cols, model(x, one_output=one_output)[0][0][0].tolist())), **dict(zip(actual_cols, y[0][0].tolist()))}))
-        torch.cuda.empty_cache()
+        with torch.no_grad():
+            x = x.to(device)
+            one_output = (len(y)<3)
+            predictions.append(({**dict(zip(pred_cols, model(x, one_output=one_output)[0][0][0].tolist())), **dict(zip(actual_cols, y[0][0].tolist()))}))
 
     pd.DataFrame(predictions).to_csv(args.outputs_path, index=False)
     
 
 else:
-    print("Invalid function name. Choose pretrain, finetune, or evaluate")
-                             
+    print("Invalid function name. Choose pretrain, finetune, or evaluate")     

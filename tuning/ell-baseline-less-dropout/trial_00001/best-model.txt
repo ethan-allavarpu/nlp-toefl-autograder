@@ -1,0 +1,1 @@
+{"lr": 3.0005554908420454e-05, "lr_decay": true, "max_epochs": 15, "batch_size": 32, "model_name": "baseline", "freezing": false, "stopping_epoch": 12, "loss": 101.16819856604751}

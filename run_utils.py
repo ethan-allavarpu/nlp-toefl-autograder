@@ -6,10 +6,12 @@ def get_argparser():
     argp = argparse.ArgumentParser()
     argp.add_argument('function', help="Choose pretrain, finetune, or evaluate") #TODO: add behavior for pretrain and eval
     argp.add_argument("--model_type", type=str, default="base", required=False)
+    argp.add_argument("--val_losses_path", type=str, required=False)
     argp.add_argument('--writing_params_path', type=str, help='Path to the writing params file', required=False)
     argp.add_argument('--reading_params_path', type=str, help='Path to the reading params file', required=False)
     argp.add_argument('--loss_path', type=str, help='Path to the output losses', default="losses.txt", required=False)
     argp.add_argument('--outputs_path', type=str, help='Path to the output predictions', default="predictions.txt", required=False)
+    argp.add_argument('--in_distribution_outputs_path', type=str, help='Path to the in-distribution output predictions', default="predictions.txt", required=False)
     argp.add_argument('--tokenizer_name', type=str, help='Name of the tokenizer to use', default="distilbert-base-uncased", required=False)
     argp.add_argument('--dataset', type=str, help='Name of the dataset to use', default="ICNALE-EDITED", required=False)
     argp.add_argument("--ICNALE_output", type=str, help="Use 'categories' or 'overall' score", default="overall", required=False)
@@ -19,7 +21,7 @@ def get_argparser():
     return argp
 
 def get_dataset(args, tokenizer):
-    if args.model_type in ["base", "ets"]:
+    if args.model_type != "hierarchical":
         if args.dataset == "ELL":
             return DefaultDataset(file_path=ELL_DATA_DIR, input_col='full_text', target_cols=['cohesion', 'syntax',  'vocabulary',  'phraseology',  'grammar',  'conventions'], index_col='text_id', 
                                     tokenizer=tokenizer)

@@ -1,0 +1,1 @@
+{"lr": 7.326956126649805e-06, "lr_decay": true, "max_epochs": 30, "batch_size": 32, "model_name": "ets", "stopping_epoch": 6, "loss": 0.4777092166950571}

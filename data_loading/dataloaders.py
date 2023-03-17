@@ -32,7 +32,7 @@ def random_split(dataset, lengths,
         lengths (sequence): lengths or fractions of splits to be produced
         generator (Generator): Generator used for the random permutation.
     """
-    if math.isclose(sum(lengths), 1) and sum(lengths) <= 1:
+    if math.isclose(sum(lengths), 1) and sum(lengths) <= 1.1:
         subset_lengths: List[int] = []
         for i, frac in enumerate(lengths):
             if frac < 0 or frac > 1:
@@ -74,9 +74,9 @@ batch_size: int = 32, val_batch_size: int = 16, test_batch_size: int = 16, num_w
     return train_dl, (val_dl if len(val_dl)>0 else None), (test_dl if len(test_dl)>0 else None)
 
 def split_on_indices(dataset: torch.utils.data.Dataset, index_col: str, val_size: float = 0.0, test_size: float=0.0,
-batch_size: int = 32, val_batch_size: int = 16, test_batch_size: int = 16, num_workers: int = 0) -> DataLoader:
+batch_size: int = 32, val_batch_size: int = 16, test_batch_size: int = 16, num_workers: int = 0, seed: int = 0) -> DataLoader:
     idx = np.array(list(set(dataset.data[index_col])))
-    np.random.seed(1)
+    np.random.seed(1+seed)
     np.random.shuffle(idx)
     l = idx.shape[0]
     test_idx = idx[: int(l * test_size)]

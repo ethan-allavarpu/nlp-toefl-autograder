@@ -1,0 +1,1 @@
+{"lr": 6.3145295315403e-06, "lr_decay": true, "max_epochs": 30, "batch_size": 16, "model_name": "hierarchical", "stopping_epoch": 20, "loss": 0.6354153559342184}

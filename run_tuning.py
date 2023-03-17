@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn import functional as F
-from modeling.model import BaseModel, ETSModel, HierarchicalModel, SpeechModel, SiameseSpeechModel
+from modeling.model import BaseModel, BaseDevModel, ETSModel, HierarchicalModel, SpeechModel, SiameseSpeechModel, MultitaskModel
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoTokenizer, AutoFeatureExtractor
 import random
@@ -32,7 +32,7 @@ def load_data(tokenizer):
     dataset = utils.get_dataset(global_args, tokenizer)
     return dataset
 
-def train_written(tune_config, filename, model_name):
+def train_written(tune_config, filename, model_name, out_path):
     from modeling import trainer
     args = global_args  
 
@@ -52,7 +52,7 @@ def train_written(tune_config, filename, model_name):
         val_size=0.2,
         test_size=0,
         batch_size=tune_config["batch_size"],
-        val_batch_size=1,
+        val_batch_size=16,
         test_batch_size=1,
         num_workers=0,
     )
@@ -65,8 +65,15 @@ def train_written(tune_config, filename, model_name):
     elif model_name == 'ets':
           model = ETSModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
     elif model_name == 'hierarchical':
-         model = model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns) - 1, pretrain_model_name=args.tokenizer_name)
+         model = HierarchicalModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
+    elif model_name == 'multitask':
+         model = MultitaskModel(seq_length=dataset.tokenizer.model_max_length, num_outputs=len(dataset.targets.columns), pretrain_model_name=args.tokenizer_name)
     
+    if(tune_config['freezing']):
+        for name, param in model.named_parameters():
+            if 'transformer' in name:
+                param.requires_grad = False
+
     if args.reading_params_path is not None:
         model.load_state_dict(torch.load(args.reading_params_path), strict=False)
 
@@ -77,7 +84,7 @@ def train_written(tune_config, filename, model_name):
         config=train_config
     )
 
-    output_folder = "/home/ubuntu/nlp-toefl-autograder/tuning/{}/trial_{}/".format(model_name, tune.get_trial_id().split('_')[1])
+    output_folder = "/home/ubuntu/nlp-toefl-autograder/tuning/{}/trial_{}/".format(out_path, tune.get_trial_id().split('_')[1])
     os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     trainer.tokens = 0 # counter used for learning rate decay
     model_min_loss=float('inf')
@@ -109,11 +116,19 @@ def train_speech(tune_config, model_name, filename='best-params'):
     args = global_args  
 
     tokenizer = AutoFeatureExtractor.from_pretrained(args.tokenizer_name)
-
+    if args.one_output:
+         target_cols_words = []
+         target_cols_phones = []
+    else:
+         target_cols_words = ["accuracy", "stress", "total"]
+         target_cols_phones = ['phones-accuracy']
+         
     dataset = SpeechDataset(path_name=SPEECHOCEAN_DATA_DIR, input_col = 'audio', target_cols_sentence=['accuracy', 'fluency', 'prosodic', 'total'],
-    target_cols_words = ["accuracy", "stress", "total"], target_cols_phones = ['phones-accuracy'], tokenizer=tokenizer)
+    target_cols_words = target_cols_words, target_cols_phones = target_cols_phones, tokenizer=tokenizer,
+    siamese=(model_name == "siamese-speech"))
 
     from modeling import trainer
+
     train_config = trainer.TrainerConfig(
         max_epochs=tune_config["max_epochs"],
         learning_rate=tune_config["lr"],
@@ -126,13 +141,15 @@ def train_speech(tune_config, model_name, filename='best-params'):
         val_size=0.1,
         test_size=0.1,
         batch_size=tune_config["batch_size"],
-        val_batch_size=16,
+        val_batch_size=1,
         test_batch_size=1,
         num_workers=0,
+        seed=args.seed
     )
     use_mod = SpeechModel if model_name == "speech" else SiameseSpeechModel
     model = use_mod(num_outputs=len(dataset.targets_sentence.columns), pretrain_model_name=args.tokenizer_name,
-    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns))
+    phoneme_seq_length=dataset.phoneme_seq_length, word_seq_length=dataset.word_seq_length, word_outputs = 0 if dataset.targets_words is None else len(dataset.targets_words.columns),
+    alpha=args.alpha)
 
     if args.reading_params_path is not None:
         model.load_state_dict(torch.load(args.reading_params_path), strict=False)
@@ -141,10 +158,11 @@ def train_speech(tune_config, model_name, filename='best-params'):
         model=model,
         train_dataloader=train_dl,
         val_dataloader=val_dl,
-        config=train_config
+        config=train_config,
+        one_output = args.one_output
     )
 
-    output_folder = "/home/ubuntu/nlp-toefl-autograder/tuning/{}/trial_{}/".format(model_name, tune.get_trial_id().split('_')[1])
+    output_folder = "/home/ubuntu/nlp-toefl-autograder/tuning/{}/{}/seed_{}/trial_{}/".format(model_name, args.version, args.seed, tune.get_trial_id().split('_')[1])
     os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     trainer.tokens = 0 # counter used for learning rate decay
     model_min_loss=float('inf')
@@ -172,7 +190,7 @@ def train_speech(tune_config, model_name, filename='best-params'):
     torch.save(model.state_dict(), output_folder+"final-model.params")
     print("Finished Training")
 
-def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filename=None):
+def main(model_name, outpath, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filename=None, version=''):
     os.environ["TUNE_MAX_PENDING_TRIALS_PG"] = "1"
     os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1" 
 
@@ -181,7 +199,7 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
          tune_config = {
             "lr": tune.loguniform(2e-5, 2e-5),
             "lr_decay": tune.choice([False]),
-            "max_epochs": tune.choice([35]),
+            "max_epochs": tune.choice([(10 if version == "baseline" else 15)]),
             "batch_size": tune.choice([16]),
             "model_name" : model_name
         }
@@ -193,10 +211,11 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
             # "batch_size": tune.choice([4, 8, 16]),
             # "model_name" : model_name
             "lr": tune.loguniform(1e-6, 1e-4),
-            "lr_decay": tune.choice([True, False]),
-            "max_epochs": tune.choice([30]),
+            "lr_decay": tune.choice([False]), # True models are always terrible for baseline
+            "max_epochs": tune.choice([15]),
             "batch_size": tune.choice([16, 32]),
-            "model_name" : model_name
+            "model_name" : model_name,
+            "freezing": tune.choice([False])
         }
 
     scheduler = ASHAScheduler(
@@ -222,7 +241,7 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
         )
     else:
         result = tune.run(
-            partial(train_written, filename=filename, model_name = model_name),
+            partial(train_written, filename=filename, model_name = model_name, out_path = outpath),
             resources_per_trial={"cpu": 7, "gpu": gpus_per_trial},
             config=tune_config,
             num_samples=num_samples,
@@ -239,6 +258,10 @@ def main(model_name, num_samples=15, max_num_epochs=20, gpus_per_trial=1, filena
 if __name__ == "__main__":
     argp = argparse.ArgumentParser()
     argp.add_argument('--model', type=str, help='Choose speech/ets/hierarchical/baseline', required=True)
+    argp.add_argument('--version', type=str, help='Choose version name for speech', required=False, default="baseline")
+    argp.add_argument('--seed', type=int, help='Choose speech/ets/hierarchical/baseline', required=False, default=0)
+    argp.add_argument('--alpha', type=float, help='Alpha value to use for speech', required=False, default=1)
+    argp.add_argument('--one_output', action='store_true')
     clargs = argp.parse_args()
 
     import sys
@@ -249,16 +272,21 @@ if __name__ == "__main__":
         tokenizer_name = "facebook/wav2vec2-base",
         dataset = "SPEECHOCEAN",
         model_type = "speech",
-        reading_params_path=None
+        reading_params_path=None,
+        one_output = clargs.one_output,
+        seed = clargs.seed,
+        version=clargs.version,
+        alpha = clargs.alpha
     )
     ets_args = Namespace(
         ICNALE_output="overall",
-        dataset="ETS",
-        function="pretrain",
-        model_type="ets",
+        dataset="ELL",
+        function="finetune",
+        model_type="base",
         reading_params_path=None,
+        # reading_params_path="double-pretrain-ets1.params",
         tokenizer_name="distilbert-base-uncased",
-        writing_params_path="double-pretrain-ets1.params"
+        writing_params_path="double-pretrain-ets2.params"
         )
     hierarchical_args = Namespace(
         ICNALE_output="overall",
@@ -267,7 +295,16 @@ if __name__ == "__main__":
         model_type="hierarchical",
         reading_params_path=None,
         tokenizer_name="distilbert-base-uncased",
-        writing_params_path="hierarchical-model-1.params"
+        writing_params_path="hierarchical-model-normalized.params"
+    )
+    multitask_args = Namespace(
+        ICNALE_output="overall",
+        dataset="ELL-ICNALE",
+        function="finetune",
+        model_type="multitask",
+        reading_params_path=None,
+        tokenizer_name="distilbert-base-uncased",
+        writing_params_path="hierarchical-model-normalized.params"
     )
     baseline_args = Namespace(
         ICNALE_output="overall",
@@ -278,6 +315,15 @@ if __name__ == "__main__":
         tokenizer_name="distilbert-base-uncased",
         writing_params_path="icnale-baseline.params"
     )
+    ets2_args = Namespace(
+        ICNALE_output="overall",
+        dataset="ELL",
+        function="finetune",
+        model_type="base",
+        reading_params_path="/home/ubuntu/nlp-toefl-autograder/tuning/ets/trial_00000/final-model.params",
+        tokenizer_name="distilbert-base-uncased",
+        writing_params_path="ets2-baseline.params"
+    )
     
 
     if clargs.model == 'speech':
@@ -287,22 +333,43 @@ if __name__ == "__main__":
     elif clargs.model == 'siamese-speech':
          global_args = speech_args
          params_output_name = "siamese-speech-best-model.params"
-         trials, epochs_per_trial  = 15, 70
+         trials, epochs_per_trial  = 1, 70
     elif clargs.model == 'ets':
          global_args = ets_args
-         params_output_name = "ets-best-model.params"
-         trials, epochs_per_trial  = 6, 50
+         params_output_name = "ets1-best-model.params"
+         trials, epochs_per_trial  = 2, 50
+    elif clargs.model == 'ets2':
+         global_args = ets2_args
+         params_output_name = "ets2-best-model.params"
+         trials, epochs_per_trial  = 2, 50
     elif clargs.model == 'hierarchical':
          global_args = hierarchical_args
-         params_output_name = "hierarchical-best-model.params"
-         trials, epochs_per_trial  = 6, 50
+         params_output_name = "hierarchical-normalized-best-model.params"
+         trials, epochs_per_trial  = 1, 50
+    elif clargs.model == 'multitask':
+         global_args = multitask_args
+         params_output_name = "multitask-best-model.params"
+         trials, epochs_per_trial  = 1, 50
     elif clargs.model == 'baseline':
          global_args = baseline_args
          params_output_name = "baseline-best-model.params"
-         trials, epochs_per_trial  = 15, 20
+         trials, epochs_per_trial  = 2, 20
+    elif clargs.model == "ell-baseline":
+        global_args = baseline_args
+        params_output_name = "baseline-best-model.params"
+        trials, epochs_per_trial  = 2, 20
+        model_name = "baseline"
+        global_args.dataset = 'ELL'
     else:
          print("choose a valid model")
          sys.exit(0)
+    
+    model_name = clargs.model
+    if clargs.model == "ets2" or clargs.model == "ell-baseline":
+        model_name = "baseline"
+        
+    
 
     # Before running go to trainer.py and uncomment line#12
-    main(model_name=clargs.model, num_samples=trials, max_num_epochs=epochs_per_trial, gpus_per_trial=1, filename=params_output_name)
+    main(model_name=model_name, outpath=clargs.model,
+         num_samples=trials, max_num_epochs=epochs_per_trial, gpus_per_trial=1, filename=params_output_name, version=clargs.version)
