@@ -57,11 +57,11 @@ def save_heatmap(conf_mat, image_filepath, labs=None, title="Confusion Matrix"):
     plt.title(title)
     plt.savefig(image_filepath, dpi=300)
 
-def save_histogram(preds, overall, image_filepath):
+def save_histogram(preds, overall, image_filepath, title=""):
     plt.figure(figsize = (6,4))
     sn.set_palette("dark")
     differences = preds - overall
     sn.histplot(differences, bins=np.arange(-50, 51, 3))
     plt.xlabel("Predicted - Expected")
-    plt.title("Histogram of Differences")
+    plt.title(title)
     plt.savefig(image_filepath, dpi=300)
