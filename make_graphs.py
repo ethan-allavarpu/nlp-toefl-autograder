@@ -28,13 +28,16 @@ for file_path in files:
 for model in df.model.unique():
     df_temp = df[df.model == model]
 
-    for trial in df.trial.unique():
-        df_temp = df_temp[df_temp.trial == trial]
+    for trial in df_temp.trial.unique():
+        plt.clf()
+        df_temp2 = df_temp[df_temp.trial == trial]
         #df_temp = df_temp.sort_values(by=['val_loss'])
         
-        if len(df_temp["val_loss"]) > 0 and len(df_temp["loss"])>0:
-            df_temp.plot()
+        if len(df_temp2["val_loss"]) > 0 and len(df_temp2["loss"])>0:
+            df_temp2.plot()
             "make the plot have a log scale on the y axis"
-            plt.yscale("log")
+            #plt.yscale("log")
             plt.title(model + " " + trial)
-    plt.show()
+        plt.show()
+        # save fig
+        plt.savefig(f'images/{model}_{trial}.png')
