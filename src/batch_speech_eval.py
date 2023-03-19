@@ -8,7 +8,7 @@ from evalutation_utils import get_confusion_matrix, get_performance, save_heatma
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', type=str, required=False, default="/home/ubuntu/nlp-toefl-autograder/tuning/speech/baseline")
+    parser.add_argument('--path', type=str, required=False, default="tuning/speech/simpler")
     parser.add_argument('--n_buckets', type=int, required=False, default=12)
     parser.add_argument('--train', action='store_true')
 
@@ -24,11 +24,12 @@ if __name__ == "__main__":
         actual_cols = [col for col in df.columns if "actual" in col]
         losses_dict = {}
         for col in pred_cols:
-            rmse = np.sqrt(mean_squared_error(df[col], df[actual_cols[pred_cols.index(col)]]))
-            r2 = r2_score(df[col], df[actual_cols[pred_cols.index(col)]])
+            rmse = np.sqrt(mean_squared_error(df[actual_cols[pred_cols.index(col)]], df[col]))
+            r2 = r2_score(df[actual_cols[pred_cols.index(col)]], df[col])
             losses_dict[col] = {'rmse': rmse, 'r2': r2}
         losses_df = pd.DataFrame(losses_dict)
         losses_df['seed'] = seed
+        df['seed'] = seed
         df_list.append(losses_df)
         predictions_df_list.append(df)
 
