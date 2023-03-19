@@ -8,7 +8,7 @@ from evalutation_utils import get_confusion_matrix, get_performance, save_heatma
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', type=str, required=False, default="/home/ubuntu/nlp-toefl-autograder/tuning/speech/simpler")
+    parser.add_argument('--path', type=str, required=False, default="/home/ubuntu/nlp-toefl-autograder/tuning/speech/baseline")
     parser.add_argument('--n_buckets', type=int, required=False, default=12)
     parser.add_argument('--train', action='store_true')
 
@@ -50,4 +50,4 @@ if __name__ == "__main__":
         r = np.corrcoef(nlp_preds['pred_total'], nlp_preds['actual_total'])[0, 1]
         print(f"Correlation (r) between the two predictions: {np.round(r, 4)}")
         save_histogram(nlp_preds['pred_total'], nlp_preds['actual_total'], path + "/histogram.png", 
-                       title="Histogram of Granular-Output Speech Model")
+                       title="Histogram of Prediction Errors")
