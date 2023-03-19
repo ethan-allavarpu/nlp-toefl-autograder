@@ -29,15 +29,20 @@ for model in df.model.unique():
     df_temp = df[df.model == model]
 
     for trial in df_temp.trial.unique():
-        plt.clf()
+        
         df_temp2 = df_temp[df_temp.trial == trial]
         #df_temp = df_temp.sort_values(by=['val_loss'])
         
         if len(df_temp2["val_loss"]) > 0 and len(df_temp2["loss"])>0:
-            df_temp2.plot()
+            df_temp2.plot(color=['red', 'darkgreen'], figsize=(5, 3.75))
             "make the plot have a log scale on the y axis"
             #plt.yscale("log")
-            plt.title(model + " " + trial)
-        plt.show()
+            plt.title("Training vs. Validation Loss")
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.legend(['Training', 'Validation'])
+
         # save fig
-        plt.savefig(f'images/{model}_{trial}.png')
+        plt.savefig(f'images/lossgraph_{model}_{trial}.png',dpi=300)
+
+        plt.clf()
