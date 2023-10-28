@@ -11,7 +11,7 @@ docopt==0.6.2
 nltk==3.6.5
 torchvision==0.14.1
 pip==21.3.1
-transformers==4.26.1
+transformers==4.30.0
 datasets==2.1.0
 sentencepiece==0.1.96
 sacrebleu==2.0.0
